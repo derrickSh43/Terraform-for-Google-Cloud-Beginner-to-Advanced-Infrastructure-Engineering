@@ -1,0 +1,15 @@
+#!/usr/bin/env bash
+# Rendered by Terraform's templatefile() - ${environment} is filled in at plan time.
+set -euo pipefail
+
+apt-get update
+apt-get install -y nginx
+
+cat > /var/www/html/index.html <<'HTML'
+<!doctype html>
+<title>Meridian Books (${environment})</title>
+<h1>Meridian Books</h1>
+<p>Environment: <strong>${environment}</strong></p>
+HTML
+
+systemctl enable --now nginx

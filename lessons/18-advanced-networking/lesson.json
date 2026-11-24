@@ -1,0 +1,17 @@
+{
+  "id": "18",
+  "slug": "advanced-networking",
+  "title": "Advanced GCP Networking",
+  "phase": 4,
+  "status": "ready",
+  "project": true,
+  "roots": {
+    "dev": "envs/dev",
+    "prod": "envs/prod",
+    "hub": "envs/hub",
+    "bootstrap": "bootstrap"
+  },
+  "state": {
+    "dev": "state/dev.tfstate"
+  }
+}

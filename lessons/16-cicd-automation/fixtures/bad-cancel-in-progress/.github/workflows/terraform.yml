@@ -1,0 +1,101 @@
+name: terraform
+
+on:
+  pull_request:
+    branches: [main]
+  push:
+    branches: [main]
+
+# Least privilege by default; jobs that need more ask for it.
+permissions:
+  contents: read
+
+env:
+  TF_IN_AUTOMATION: "true"
+
+# One run per branch at a time; never cancel an apply halfway through.
+concurrency:
+  group: terraform-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  checks:
+    name: Static checks (no cloud credentials)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4
+      - uses: hashicorp/setup-terraform@b9cd54a3c349d3f38e8881555d616ced269862dd # v3
+        with:
+          terraform_version: "1.17.2"
+      - uses: terraform-linters/setup-tflint@90f302c255ef959cbfb4bd10581afecdb7ece3e6 # v4
+      - name: Lint
+        run: tflint --recursive
+      - name: Format
+        run: terraform fmt -check -recursive
+      - name: Validate every root
+        run: |
+          for root in envs/dev envs/prod bootstrap; do
+            terraform -chdir=$root init -backend=false -input=false
+            terraform -chdir=$root validate
+          done
+      - name: Module tests
+        run: |
+          for m in modules/*/; do
+            if [ -d "$m/tests" ]; then
+              terraform -chdir=$m init -backend=false -input=false
+              terraform -chdir=$m test
+            fi
+          done
+
+  plan:
+    name: Plan (${{ matrix.env }})
+    needs: checks
+    if: github.event_name == 'pull_request'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      id-token: write
+    strategy:
+      matrix:
+        env: [dev, prod]
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4
+      - uses: hashicorp/setup-terraform@b9cd54a3c349d3f38e8881555d616ced269862dd # v3
+        with:
+          terraform_version: "1.17.2"
+      - uses: google-github-actions/auth@6fc4af4b145ae7821d527454aa9bd537d1f2dc5f # v2
+        with:
+          workload_identity_provider: ${{ vars.WIF_PROVIDER }}
+          service_account: ${{ vars.PLAN_SERVICE_ACCOUNT }}
+      - name: Plan
+        run: |
+          terraform -chdir=envs/${{ matrix.env }} init -input=false
+          terraform -chdir=envs/${{ matrix.env }} plan -input=false -lock=false -out=tfplan
+          terraform -chdir=envs/${{ matrix.env }} show -no-color tfplan > plan-${{ matrix.env }}.txt
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: plan-${{ matrix.env }}
+          path: plan-${{ matrix.env }}.txt
+
+  apply:
+    name: Apply dev
+    needs: checks
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    environment: dev
+    permissions:
+      contents: read
+      id-token: write
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4
+      - uses: hashicorp/setup-terraform@b9cd54a3c349d3f38e8881555d616ced269862dd # v3
+        with:
+          terraform_version: "1.17.2"
+      - uses: google-github-actions/auth@6fc4af4b145ae7821d527454aa9bd537d1f2dc5f # v2
+        with:
+          workload_identity_provider: ${{ vars.WIF_PROVIDER }}
+          service_account: ${{ vars.APPLY_SERVICE_ACCOUNT }}
+      - name: Apply
+        run: |
+          terraform -chdir=envs/dev init -input=false
+          terraform -chdir=envs/dev apply -input=false -auto-approve

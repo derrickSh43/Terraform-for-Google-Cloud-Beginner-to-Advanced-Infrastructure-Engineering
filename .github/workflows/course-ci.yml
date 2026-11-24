@@ -1,0 +1,41 @@
+name: course-ci
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  selftest:
+    name: Validators accept solutions and reject bad fixtures
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - uses: hashicorp/setup-terraform@v3
+        with:
+          terraform_version: "1.17.2"
+          terraform_wrapper: false
+
+      - name: Cache Terraform providers
+        uses: actions/cache@v4
+        with:
+          path: .course/plugin-cache
+          key: tf-providers-${{ runner.os }}-${{ hashFiles('shared/terraform/.terraform.lock.hcl') }}
+
+      - name: Unit tests (coursekit)
+        run: python -m unittest discover -s tests -t . -v
+
+      - name: Download providers from the Terraform Registry
+        run: python course.py setup
+
+      - name: Self-test every ready lesson
+        run: python course.py selftest --workers 6

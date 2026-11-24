@@ -1,0 +1,5 @@
+project_id      = "meridian-dev-4821"
+region          = "us-central1"
+environment     = "dev"
+project_number  = "418273645512"
+billing_account = "01A2B3-C4D5E6-F7A8B9"

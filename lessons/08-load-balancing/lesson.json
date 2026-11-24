@@ -1,0 +1,16 @@
+{
+  "id": "08",
+  "slug": "load-balancing",
+  "title": "Load Balancing and Health Checks",
+  "phase": 2,
+  "status": "ready",
+  "project": true,
+  "roots": {
+    "dev": "envs/dev",
+    "prod": "envs/prod",
+    "bootstrap": "bootstrap"
+  },
+  "state": {
+    "dev": "state/dev.tfstate"
+  }
+}

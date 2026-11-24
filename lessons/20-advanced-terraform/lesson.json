@@ -1,0 +1,24 @@
+{
+  "id": "20",
+  "slug": "advanced-terraform",
+  "title": "Advanced Terraform Engineering",
+  "phase": 4,
+  "status": "ready",
+  "project": true,
+  "roots": {
+    "dev": "envs/dev",
+    "prod": "envs/prod",
+    "hub": "envs/hub",
+    "bootstrap": "bootstrap"
+  },
+  "state": {
+    "dev": "state/dev.tfstate"
+  },
+  "state_from": "starter",
+  "cloud": {
+    "dev": "state/dev.cloud.json"
+  },
+  "expected_drift": [
+    "google_storage_bucket.reports"
+  ]
+}

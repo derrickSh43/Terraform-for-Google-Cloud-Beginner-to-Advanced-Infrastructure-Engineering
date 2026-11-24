@@ -1,0 +1,20 @@
+# Course caches and build dirs
+.course/
+# Student work (keep the folder, not the contents)
+workspace/*
+!workspace/.gitkeep
+# Terraform
+**/.terraform/*
+*.tfstate
+*.tfstate.*
+# ...except the prepared "deployed environment" states that lessons ship
+!lessons/*/state/*.tfstate
+!lessons/*/starter/state/*.tfstate
+*.tfplan
+crash.log
+# Lock files: only the shared one is committed
+.terraform.lock.hcl
+!shared/terraform/.terraform.lock.hcl
+# Python
+__pycache__/
+*.pyc

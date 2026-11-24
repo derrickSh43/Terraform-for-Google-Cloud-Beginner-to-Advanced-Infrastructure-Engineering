@@ -1,0 +1,38 @@
+variable "project_id" {
+  description = "Google Cloud project for this environment."
+  type        = string
+}
+
+variable "region" {
+  description = "Default region for regional resources."
+  type        = string
+  default     = "us-central1"
+}
+
+variable "zone" {
+  description = "Zone for VMs. Must be inside var.region."
+  type        = string
+  default     = "us-central1-a"
+}
+
+variable "environment" {
+  description = "Environment name: used in resource names and labels."
+  type        = string
+}
+
+variable "subnets" {
+  description = "Subnet tier name => CIDR. Needs \"web\" and \"app\" tiers."
+  type        = map(string)
+}
+
+variable "web_machine_type" {
+  description = "Machine type for the web tier."
+  type        = string
+  default     = "e2-micro"
+}
+
+variable "deletion_protection" {
+  description = "Protect VMs from deletion (production)."
+  type        = bool
+  default     = false
+}

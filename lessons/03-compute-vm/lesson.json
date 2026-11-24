@@ -1,0 +1,8 @@
+{
+  "id": "03",
+  "slug": "compute-vm",
+  "title": "Creating a Basic Compute VM",
+  "phase": 1,
+  "status": "ready",
+  "project": true
+}

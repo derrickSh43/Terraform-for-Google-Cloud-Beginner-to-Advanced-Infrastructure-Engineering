@@ -1,0 +1,209 @@
+name: terraform
+
+# One pipeline for the whole platform: every root is validated and planned on pull
+# requests; merges to main apply dev first, then the shared roots, then prod.
+on:
+  pull_request:
+    branches: [main]
+  push:
+    branches: [main]
+  schedule:
+    - cron: "0 6 * * 1-5"
+
+# Least privilege by default; jobs that need more ask for it.
+permissions:
+  contents: read
+
+env:
+  TF_IN_AUTOMATION: "true"
+
+jobs:
+  checks:
+    name: Static checks (no cloud credentials)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: hashicorp/setup-terraform@v3
+        with:
+          terraform_version: "1.17.2"
+      - name: Format
+        run: terraform fmt -check -recursive
+      - name: Validate every root
+        run: |
+          for root in envs/dev envs/prod envs/hub envs/platform bootstrap; do
+            terraform -chdir=$root init -backend=false -input=false
+            terraform -chdir=$root validate
+          done
+      - name: Module tests
+        run: |
+          for m in modules/*/; do
+            if [ -d "$m/tests" ]; then
+              terraform -chdir=$m init -backend=false -input=false
+              terraform -chdir=$m test
+            fi
+          done
+
+  plan:
+    name: Plan (${{ matrix.root }})
+    needs: checks
+    if: github.event_name == 'pull_request'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      id-token: write
+    strategy:
+      fail-fast: false
+      matrix:
+        root: [dev, prod, hub, platform]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: hashicorp/setup-terraform@v3
+        with:
+          terraform_version: "1.17.2"
+
+      - uses: google-github-actions/auth@v2
+        with:
+          workload_identity_provider: ${{ vars.WIF_PROVIDER }}
+          service_account: ${{ vars.PLAN_SERVICE_ACCOUNT }}
+      - name: Plan
+        run: |
+          terraform -chdir=envs/${{ matrix.root }} init -input=false
+          terraform -chdir=envs/${{ matrix.root }} plan -input=false -lock=false -out=tfplan
+
+  apply-dev:
+    name: Apply dev
+    needs: checks
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    environment: dev
+    permissions:
+      contents: read
+      id-token: write
+    steps:
+      - uses: actions/checkout@v4
+      - uses: hashicorp/setup-terraform@v3
+        with:
+          terraform_version: "1.17.2"
+
+      - uses: google-github-actions/auth@v2
+        with:
+          workload_identity_provider: ${{ vars.WIF_PROVIDER }}
+          service_account: ${{ vars.APPLY_SERVICE_ACCOUNT }}
+      - name: Apply
+        run: |
+          terraform -chdir=envs/dev init -input=false
+          terraform -chdir=envs/dev apply -input=false -auto-approve
+
+  apply-shared:
+    name: Apply ${{ matrix.root }}
+    needs: checks
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    environment: ${{ matrix.root }}
+    permissions:
+      contents: read
+      id-token: write
+    strategy:
+      max-parallel: 1
+      matrix:
+        root: [hub, platform]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: hashicorp/setup-terraform@v3
+        with:
+          terraform_version: "1.17.2"
+
+      - uses: google-github-actions/auth@v2
+        with:
+          workload_identity_provider: ${{ vars.WIF_PROVIDER }}
+          service_account: ${{ vars.APPLY_SERVICE_ACCOUNT }}
+      - name: Apply
+        run: |
+          terraform -chdir=envs/${{ matrix.root }} init -input=false
+          terraform -chdir=envs/${{ matrix.root }} apply -input=false -auto-approve
+
+  # prod applies exactly the plan the approver looked at: plan once, save it,
+  # wait for the environment's reviewers, then apply that file.
+  plan-prod:
+    name: Plan prod (for review)
+    needs: [apply-dev, apply-shared]
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      id-token: write
+    steps:
+      - uses: actions/checkout@v4
+      - uses: hashicorp/setup-terraform@v3
+        with:
+          terraform_version: "1.17.2"
+
+      - uses: google-github-actions/auth@v2
+        with:
+          workload_identity_provider: ${{ vars.WIF_PROVIDER }}
+          service_account: ${{ vars.PLAN_SERVICE_ACCOUNT }}
+      - name: Plan
+        run: |
+          terraform -chdir=envs/prod init -input=false
+          terraform -chdir=envs/prod plan -input=false -out=tfplan
+      - uses: actions/upload-artifact@v4
+        with:
+          name: prod-tfplan
+          path: envs/prod/tfplan
+          retention-days: 5
+
+  apply-prod:
+    name: Apply prod (the reviewed plan)
+    needs: plan-prod
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    environment: prod
+    permissions:
+      contents: read
+      id-token: write
+    steps:
+      - uses: actions/checkout@v4
+      - uses: hashicorp/setup-terraform@v3
+        with:
+          terraform_version: "1.17.2"
+
+      - uses: google-github-actions/auth@v2
+        with:
+          workload_identity_provider: ${{ vars.WIF_PROVIDER }}
+          service_account: ${{ vars.APPLY_SERVICE_ACCOUNT }}
+      - uses: actions/download-artifact@v4
+        with:
+          name: prod-tfplan
+          path: envs/prod
+      - name: Apply the saved plan
+        run: |
+          terraform -chdir=envs/prod init -input=false
+          terraform -chdir=envs/prod apply -input=false tfplan
+
+  # Weekday mornings: has anyone changed the platform outside Terraform?
+  # plan -detailed-exitcode exits 2 when there are changes, which fails the job.
+  drift:
+    name: Drift (${{ matrix.root }})
+    if: github.event_name == 'schedule'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      id-token: write
+    strategy:
+      fail-fast: false
+      matrix:
+        root: [dev, prod, hub, platform]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: hashicorp/setup-terraform@v3
+        with:
+          terraform_version: "1.17.2"
+
+      - uses: google-github-actions/auth@v2
+        with:
+          workload_identity_provider: ${{ vars.WIF_PROVIDER }}
+          service_account: ${{ vars.PLAN_SERVICE_ACCOUNT }}
+      - name: Detect drift
+        run: |
+          terraform -chdir=envs/${{ matrix.root }} init -input=false
+          terraform -chdir=envs/${{ matrix.root }} plan -input=false -lock=false -detailed-exitcode

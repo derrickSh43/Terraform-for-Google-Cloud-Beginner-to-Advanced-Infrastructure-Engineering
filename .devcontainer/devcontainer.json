@@ -1,0 +1,25 @@
+{
+  "name": "Terraform for Google Cloud course",
+  "build": {
+    "dockerfile": "Dockerfile"
+  },
+  "postCreateCommand": "python course.py setup",
+  "customizations": {
+    "vscode": {
+      "extensions": [
+        "hashicorp.terraform",
+        "ms-python.python",
+        "bierner.markdown-mermaid"
+      ],
+      "settings": {
+        "terraform.languageServer.enable": true,
+        "[terraform]": {
+          "editor.formatOnSave": true
+        }
+      }
+    }
+  },
+  "remoteEnv": {
+    "TF_PLUGIN_CACHE_DIR": "${containerWorkspaceFolder}/.course/plugin-cache"
+  }
+}

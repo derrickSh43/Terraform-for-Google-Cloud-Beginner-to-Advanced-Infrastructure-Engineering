@@ -1,0 +1,5 @@
+{
+  "base": "solution-challenge",
+  "level": "challenge",
+  "fail_stage": "tests"
+}

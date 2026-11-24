@@ -1,0 +1,61 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Terraform for Google Cloud</title>
+<link rel="stylesheet" href="/static/app.css">
+</head>
+<body>
+<header id="top">
+  <button id="menu-btn" class="icon" title="All lessons">☰</button>
+  <div id="lesson-title">Loading…</div>
+  <nav id="stages"></nav>
+  <div id="top-right">
+    <span id="editor-source" class="muted"></span>
+  </div>
+</header>
+
+<aside id="drawer" hidden>
+  <div class="drawer-head">All lessons <button class="icon" id="drawer-close" title="Close">✕</button></div>
+  <div id="lesson-list"></div>
+</aside>
+
+<main id="main">
+  <section id="left">
+    <div id="content"></div>
+  </section>
+  <div id="divider" title="Drag to resize"></div>
+  <section id="right">
+    <div id="editor-bar">
+      <div id="tabs"></div>
+      <div class="bar-actions">
+        <button id="btn-save" title="Save (Ctrl+S)">Save</button>
+        <button id="btn-fmt" title="terraform fmt">Format</button>
+        <button id="btn-check" class="primary" title="Run the checks (Ctrl+Enter)">▶ Check</button>
+      </div>
+    </div>
+    <div id="editor-wrap">
+      <div id="files">
+        <div class="files-head"><span id="files-label">Files</span><button class="icon small" id="btn-new" title="New file">＋</button></div>
+        <div id="file-list"></div>
+      </div>
+      <div id="editor"><div id="editor-empty" class="muted">Start the lesson to open your files here.</div></div>
+    </div>
+    <div id="results">
+      <div id="results-tabs">
+        <button data-tab="req" class="active">Requirements</button>
+        <button data-tab="pipeline">Pipeline</button>
+        <button data-tab="plan">Plan</button>
+        <button data-tab="tests">Tests</button>
+        <span id="results-summary" class="muted"></span>
+      </div>
+      <div id="results-body"><div class="muted pad">Press ▶ Check to run terraform fmt, init, validate and an offline plan, then the lesson's requirement checks.</div></div>
+    </div>
+  </section>
+</main>
+
+<div id="toast" hidden></div>
+<script src="/static/app.js"></script>
+</body>
+</html>

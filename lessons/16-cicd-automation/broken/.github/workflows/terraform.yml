@@ -1,0 +1,87 @@
+name: terraform
+
+on:
+  pull_request:
+    branches: [main]
+  push:
+    branches: [main]
+
+# Least privilege by default; jobs that need more ask for it.
+permissions:
+  contents: read
+
+env:
+  TF_IN_AUTOMATION: "true"
+
+jobs:
+  checks:
+    name: Static checks (no cloud credentials)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: hashicorp/setup-terraform@v3
+        with:
+          terraform_version: "1.17.2"
+      - name: Format
+        run: terraform fmt -check -recursive
+      - name: Validate every root
+        run: |
+          for root in envs/dev envs/prod bootstrap; do
+            terraform -chdir=$root init -backend=false -input=false
+            terraform -chdir=$root validate
+          done
+      - name: Module tests
+        run: |
+          for m in modules/*/; do
+            if [ -d "$m/tests" ]; then
+              terraform -chdir=$m init -backend=false -input=false
+              terraform -chdir=$m test
+            fi
+          done
+
+  plan:
+    name: Plan (${{ matrix.env }})
+    needs: checks
+    if: github.event_name == 'pull_request'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      id-token: write
+    strategy:
+      matrix:
+        env: [dev, prod]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: hashicorp/setup-terraform@v3
+        with:
+          terraform_version: "1.17.2"
+      - uses: google-github-actions/auth@v2
+        with:
+          workload_identity_provider: ${{ vars.WIF_PROVIDER }}
+          service_account: ${{ vars.PLAN_SERVICE_ACCOUNT }}
+      - name: Plan
+        run: |
+          terraform -chdir=envs/${{ matrix.env }} init -input=false
+          terraform -chdir=envs/${{ matrix.env }} plan -input=false -lock=false -out=tfplan
+
+  apply:
+    name: Apply dev
+    needs: checks
+    runs-on: ubuntu-latest
+    environment: dev
+    permissions:
+      contents: read
+      id-token: write
+    steps:
+      - uses: actions/checkout@v4
+      - uses: hashicorp/setup-terraform@v3
+        with:
+          terraform_version: "1.17.2"
+      - uses: google-github-actions/auth@v2
+        with:
+          workload_identity_provider: ${{ vars.WIF_PROVIDER }}
+          service_account: ${{ vars.APPLY_SERVICE_ACCOUNT }}
+      - name: Apply
+        run: |
+          terraform -chdir=envs/dev init -input=false
+          terraform -chdir=envs/dev apply -input=false -auto-approve

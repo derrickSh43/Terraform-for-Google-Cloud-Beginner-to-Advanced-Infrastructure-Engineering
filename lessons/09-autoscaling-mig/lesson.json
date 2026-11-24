@@ -1,0 +1,16 @@
+{
+  "id": "09",
+  "slug": "autoscaling-mig",
+  "title": "Autoscaling and Instance Management",
+  "phase": 2,
+  "status": "ready",
+  "project": true,
+  "roots": {
+    "dev": "envs/dev",
+    "prod": "envs/prod",
+    "bootstrap": "bootstrap"
+  },
+  "state": {
+    "dev": "state/dev.tfstate"
+  }
+}

@@ -1,0 +1,17 @@
+{
+  "id": "06",
+  "slug": "terraform-state-modules",
+  "title": "Terraform State and Reusable Code",
+  "phase": 2,
+  "status": "ready",
+  "project": true,
+  "roots": {
+    "dev": "envs/dev",
+    "prod": "envs/prod",
+    "bootstrap": "bootstrap"
+  },
+  "state": {
+    "dev": "state/dev.tfstate"
+  },
+  "starter_previous": "legacy"
+}

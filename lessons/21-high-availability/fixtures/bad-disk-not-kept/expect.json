@@ -1,0 +1,9 @@
+{
+  "fail_ids": [
+    "R21.8",
+    "R21.9"
+  ],
+  "delete": [
+    "envs/dev/decommission.tf"
+  ]
+}

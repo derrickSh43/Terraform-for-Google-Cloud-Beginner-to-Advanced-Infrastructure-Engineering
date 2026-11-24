@@ -1,0 +1,58 @@
+variable "project_id" {
+  description = "Project that owns the environment."
+  type        = string
+}
+
+variable "region" {
+  description = "Region for regional resources (also the bucket location)."
+  type        = string
+}
+
+variable "labels" {
+  description = "Labels applied to every labelled resource in this module."
+  type        = map(string)
+}
+
+variable "apis" {
+  description = "Google Cloud APIs to enable."
+  type        = set(string)
+  default = [
+    "compute.googleapis.com",
+    "iam.googleapis.com",
+    "storage.googleapis.com",
+    "logging.googleapis.com",
+    "monitoring.googleapis.com",
+    "servicenetworking.googleapis.com",
+    "sqladmin.googleapis.com",
+    "secretmanager.googleapis.com",
+    "run.googleapis.com",
+    "artifactregistry.googleapis.com",
+    "pubsub.googleapis.com",
+    "cloudscheduler.googleapis.com",
+    "container.googleapis.com",
+  ]
+}
+
+variable "backup_retention_days" {
+  description = "Minimum age before a backup object can be deleted or overwritten."
+  type        = number
+  default     = 7
+}
+
+variable "kms_key_id" {
+  description = "Cloud KMS key for default encryption (null = Google-managed keys)."
+  type        = string
+  default     = null
+}
+
+variable "storage_location" {
+  description = "Location for data buckets: null = var.region; a dual-region (e.g. NAM4) keeps a copy in a second region."
+  type        = string
+  default     = null
+}
+
+variable "turbo_replication" {
+  description = "Turbo replication (15-minute RPO) for the backups bucket. Dual-region locations only."
+  type        = bool
+  default     = false
+}

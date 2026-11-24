@@ -1,0 +1,203 @@
+{
+  "comment": "Objects that exist in the cloud but not in Terraform state (created by hand).",
+  "objects": [
+    {
+      "type": "google_storage_bucket",
+      "id": "meridian-dev-report-archive",
+      "aliases": [
+        "meridian-dev-4821/meridian-dev-report-archive"
+      ],
+      "schema_version": 4,
+      "attributes": {
+        "autoclass": [],
+        "cors": [],
+        "custom_placement_config": [],
+        "default_event_based_hold": null,
+        "deletion_policy": "DELETE",
+        "effective_labels": {
+          "cost-center": "analytics",
+          "goog-terraform-provisioned": "true",
+          "team": "reporting"
+        },
+        "enable_object_retention": null,
+        "encryption": [],
+        "force_destroy": false,
+        "hierarchical_namespace": [],
+        "ip_filter": [],
+        "labels": {
+          "cost-center": "analytics",
+          "team": "reporting"
+        },
+        "lifecycle_rule": [
+          {
+            "action": [
+              {
+                "storage_class": "",
+                "type": "Delete"
+              }
+            ],
+            "condition": [
+              {
+                "age": 730,
+                "created_before": "",
+                "custom_time_before": "",
+                "days_since_custom_time": null,
+                "days_since_noncurrent_time": null,
+                "matches_prefix": [],
+                "matches_storage_class": [],
+                "matches_suffix": [],
+                "noncurrent_time_before": "",
+                "num_newer_versions": null,
+                "send_age_if_zero": null,
+                "send_days_since_custom_time_if_zero": null,
+                "send_days_since_noncurrent_time_if_zero": null,
+                "send_num_newer_versions_if_zero": null,
+                "size_above_bytes": null,
+                "size_below_bytes": null,
+                "with_state": "fake-storage_bucket-archive-lifecycle_rule-condition-with_state"
+              }
+            ]
+          }
+        ],
+        "location": "US-CENTRAL1",
+        "logging": [],
+        "name": "meridian-dev-report-archive",
+        "project": "meridian-dev-4821",
+        "requester_pays": null,
+        "retention_policy": [],
+        "storage_class": "NEARLINE",
+        "terraform_labels": {
+          "cost-center": "analytics",
+          "goog-terraform-provisioned": "true",
+          "team": "reporting"
+        },
+        "timeouts": null,
+        "uniform_bucket_level_access": true,
+        "id": "meridian-dev-report-archive",
+        "project_number": 0,
+        "public_access_prevention": "fake-storage_bucket-archive-public_access_prevention",
+        "rpo": "fake-storage_bucket-archive-rpo",
+        "self_link": "fake-storage_bucket-archive-self_link",
+        "time_created": "fake-storage_bucket-archive-time_created",
+        "updated": "fake-storage_bucket-archive-updated",
+        "url": "fake-storage_bucket-archive-url",
+        "soft_delete_policy": [],
+        "versioning": [],
+        "website": []
+      },
+      "sensitive_attributes": []
+    },
+    {
+      "type": "google_storage_bucket",
+      "id": "meridian-dev-export-2025-q3",
+      "aliases": [
+        "meridian-dev-4821/meridian-dev-export-2025-q3"
+      ],
+      "schema_version": 4,
+      "attributes": {
+        "autoclass": [],
+        "cors": [],
+        "custom_placement_config": [],
+        "default_event_based_hold": null,
+        "deletion_policy": "DELETE",
+        "effective_labels": {
+          "cost-center": "analytics",
+          "goog-terraform-provisioned": "true",
+          "team": "reporting"
+        },
+        "enable_object_retention": null,
+        "encryption": [],
+        "force_destroy": false,
+        "hierarchical_namespace": [],
+        "ip_filter": [],
+        "labels": {
+          "cost-center": "analytics",
+          "team": "reporting"
+        },
+        "lifecycle_rule": [],
+        "location": "US-CENTRAL1",
+        "logging": [],
+        "name": "meridian-dev-export-2025-q3",
+        "project": "meridian-dev-4821",
+        "requester_pays": null,
+        "retention_policy": [],
+        "storage_class": "COLDLINE",
+        "terraform_labels": {
+          "cost-center": "analytics",
+          "goog-terraform-provisioned": "true",
+          "team": "reporting"
+        },
+        "timeouts": null,
+        "uniform_bucket_level_access": true,
+        "id": "meridian-dev-export-2025-q3",
+        "project_number": 0,
+        "public_access_prevention": "fake-storage_bucket-exports-2025-q3-public_access_prevention",
+        "rpo": "fake-storage_bucket-exports-2025-q3-rpo",
+        "self_link": "fake-storage_bucket-exports-2025-q3-self_link",
+        "time_created": "fake-storage_bucket-exports-2025-q3-time_created",
+        "updated": "fake-storage_bucket-exports-2025-q3-updated",
+        "url": "fake-storage_bucket-exports-2025-q3-url",
+        "soft_delete_policy": [],
+        "versioning": [],
+        "website": []
+      },
+      "sensitive_attributes": []
+    },
+    {
+      "type": "google_storage_bucket",
+      "id": "meridian-dev-export-2025-q4",
+      "aliases": [
+        "meridian-dev-4821/meridian-dev-export-2025-q4"
+      ],
+      "schema_version": 4,
+      "attributes": {
+        "autoclass": [],
+        "cors": [],
+        "custom_placement_config": [],
+        "default_event_based_hold": null,
+        "deletion_policy": "DELETE",
+        "effective_labels": {
+          "cost-center": "analytics",
+          "goog-terraform-provisioned": "true",
+          "team": "reporting"
+        },
+        "enable_object_retention": null,
+        "encryption": [],
+        "force_destroy": false,
+        "hierarchical_namespace": [],
+        "ip_filter": [],
+        "labels": {
+          "cost-center": "analytics",
+          "team": "reporting"
+        },
+        "lifecycle_rule": [],
+        "location": "US-CENTRAL1",
+        "logging": [],
+        "name": "meridian-dev-export-2025-q4",
+        "project": "meridian-dev-4821",
+        "requester_pays": null,
+        "retention_policy": [],
+        "storage_class": "COLDLINE",
+        "terraform_labels": {
+          "cost-center": "analytics",
+          "goog-terraform-provisioned": "true",
+          "team": "reporting"
+        },
+        "timeouts": null,
+        "uniform_bucket_level_access": true,
+        "id": "meridian-dev-export-2025-q4",
+        "project_number": 0,
+        "public_access_prevention": "fake-storage_bucket-exports-2025-q4-public_access_prevention",
+        "rpo": "fake-storage_bucket-exports-2025-q4-rpo",
+        "self_link": "fake-storage_bucket-exports-2025-q4-self_link",
+        "time_created": "fake-storage_bucket-exports-2025-q4-time_created",
+        "updated": "fake-storage_bucket-exports-2025-q4-updated",
+        "url": "fake-storage_bucket-exports-2025-q4-url",
+        "soft_delete_policy": [],
+        "versioning": [],
+        "website": []
+      },
+      "sensitive_attributes": []
+    }
+  ]
+}

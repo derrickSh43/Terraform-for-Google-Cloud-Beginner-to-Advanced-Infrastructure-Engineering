@@ -1,0 +1,16 @@
+{
+  "id": "11",
+  "slug": "storage-persistent-data",
+  "title": "Cloud Storage and Persistent Data",
+  "phase": 2,
+  "status": "ready",
+  "project": true,
+  "roots": {
+    "dev": "envs/dev",
+    "prod": "envs/prod",
+    "bootstrap": "bootstrap"
+  },
+  "state": {
+    "dev": "state/dev.tfstate"
+  }
+}

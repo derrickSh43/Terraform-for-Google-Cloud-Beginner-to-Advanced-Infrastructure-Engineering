@@ -1,0 +1,18 @@
+{
+  "id": "24",
+  "slug": "capstone",
+  "title": "Advanced System Design: Capstone",
+  "phase": 4,
+  "status": "ready",
+  "project": true,
+  "roots": {
+    "dev": "envs/dev",
+    "prod": "envs/prod",
+    "hub": "envs/hub",
+    "platform": "envs/platform",
+    "bootstrap": "bootstrap"
+  },
+  "state": {
+    "dev": "state/dev.tfstate"
+  }
+}

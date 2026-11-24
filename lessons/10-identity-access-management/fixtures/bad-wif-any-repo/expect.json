@@ -1,0 +1,7 @@
+{
+  "base": "solution-challenge",
+  "level": "challenge",
+  "fail_ids": [
+    "C10.1"
+  ]
+}

@@ -1,0 +1,8 @@
+{
+  "id": "02",
+  "slug": "gcp-foundations",
+  "title": "Google Cloud Foundations: Projects, APIs and Basic IAM",
+  "phase": 1,
+  "status": "ready",
+  "project": true
+}

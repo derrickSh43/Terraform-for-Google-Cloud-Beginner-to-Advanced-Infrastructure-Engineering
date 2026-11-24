@@ -1,0 +1,31 @@
+variable "environment" {
+  description = "Environment name (key ring name suffix)."
+  type        = string
+}
+
+variable "region" {
+  description = "Key location - must match the buckets that use it."
+  type        = string
+}
+
+variable "project_number" {
+  description = "Project number (Cloud Storage service agent address)."
+  type        = string
+}
+
+variable "rotation_days" {
+  description = "Automatic rotation period in days."
+  type        = number
+  default     = 90
+}
+
+variable "labels" {
+  description = "Labels for the keys."
+  type        = map(string)
+}
+
+variable "location" {
+  description = "Key ring location: null = var.region. Must equal the location of the CMEK buckets (e.g. nam4)."
+  type        = string
+  default     = null
+}

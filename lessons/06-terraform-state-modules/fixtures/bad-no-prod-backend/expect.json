@@ -1,0 +1,8 @@
+{
+  "fail_ids": [
+    "R6.1"
+  ],
+  "delete": [
+    "envs/prod/backend.tf"
+  ]
+}

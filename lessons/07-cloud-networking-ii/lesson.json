@@ -1,0 +1,16 @@
+{
+  "id": "07",
+  "slug": "cloud-networking-ii",
+  "title": "Cloud Networking II: NAT, Peering, Private Access",
+  "phase": 2,
+  "status": "ready",
+  "project": true,
+  "roots": {
+    "dev": "envs/dev",
+    "prod": "envs/prod",
+    "bootstrap": "bootstrap"
+  },
+  "state": {
+    "dev": "state/dev.tfstate"
+  }
+}

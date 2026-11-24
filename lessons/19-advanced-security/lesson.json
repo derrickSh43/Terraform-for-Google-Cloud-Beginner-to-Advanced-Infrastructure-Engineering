@@ -1,0 +1,17 @@
+{
+  "id": "19",
+  "slug": "advanced-security",
+  "title": "Advanced Security Engineering",
+  "phase": 4,
+  "status": "ready",
+  "project": true,
+  "roots": {
+    "dev": "envs/dev",
+    "prod": "envs/prod",
+    "hub": "envs/hub",
+    "bootstrap": "bootstrap"
+  },
+  "state": {
+    "dev": "state/dev.tfstate"
+  }
+}

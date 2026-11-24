@@ -1,0 +1,54 @@
+{
+  "adr": {
+    "dir": "docs/adr",
+    "name_pattern": "^[0-9]{4}-[a-z0-9-]+[.]md$",
+    "min_records": 3,
+    "status_values": ["Proposed", "Accepted", "Superseded", "Deprecated"],
+    "sections": [
+      {"name": "Context", "aliases": ["Problem"], "min_words": 40},
+      {"name": "Decision", "aliases": [], "min_words": 25},
+      {"name": "Alternatives considered", "aliases": ["Alternatives", "Considered options", "Options considered"], "min_words": 25},
+      {"name": "Consequences", "aliases": [], "min_words": 25}
+    ],
+    "topics": [
+      {"name": "landing zone / project structure", "any": ["landing zone", "project factory", "folder"]},
+      {"name": "network topology", "any": ["shared vpc", "hub-and-spoke", "hub and spoke", "vpn", "interconnect", "peering"]},
+      {"name": "disaster recovery", "any": ["rpo", "rto", "disaster recovery", "failover", "replica"]}
+    ]
+  },
+  "architecture": {
+    "file": "docs/architecture.md",
+    "components": {
+      "google_compute_global_forwarding_rule": ["load balancer"],
+      "google_compute_security_policy": ["cloud armor"],
+      "google_compute_region_instance_group_manager": ["mig", "instance group"],
+      "google_cloud_run_v2_service": ["cloud run"],
+      "google_sql_database_instance": ["cloud sql", "postgres"],
+      "google_container_cluster": ["gke", "kubernetes"],
+      "google_pubsub_topic": ["pub/sub", "pubsub"],
+      "google_artifact_registry_repository": ["artifact registry", "registry"],
+      "google_kms_crypto_key": ["kms", "encryption key"],
+      "google_compute_ha_vpn_gateway": ["vpn"],
+      "google_dns_managed_zone": ["dns"],
+      "google_folder": ["folder"],
+      "google_logging_folder_sink": ["log sink", "log bucket", "central log"],
+      "google_compute_shared_vpc_host_project": ["shared vpc"]
+    }
+  },
+  "criteria": [
+    {"name": "Design", "covers": "Roots, boundaries and data flows are explained; tradeoffs are recorded as ADRs."},
+    {"name": "Build", "covers": "Reusable modules; dev and prod differ only in values; no hand-made resources."},
+    {"name": "Secure", "covers": "Least privilege, no keys, guardrails, encryption, edge protection."},
+    {"name": "Automate", "covers": "Every root validated, planned and applied by CI, with reviews before prod."},
+    {"name": "Monitor", "covers": "Alerts reach humans with runbooks; logs are centralised and retained."},
+    {"name": "Scale", "covers": "Capacity survives a zone loss; data survives a region loss within objectives."},
+    {"name": "Document", "covers": "A newcomer can find why and how from the repository alone."},
+    {"name": "Test", "covers": "Modules have tests that would catch past mistakes; checks run before merge."}
+  ],
+  "levels": {
+    "1": "Missing or not working",
+    "2": "Partly there: works, but with gaps a reviewer would flag",
+    "3": "Solid: meets the requirement with evidence",
+    "4": "Exemplary: goes beyond, and explains why"
+  }
+}

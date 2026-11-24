@@ -1,0 +1,16 @@
+# Normalize line endings: LF in the repository and in checkouts, so Terraform,
+# Python and shell scripts behave the same on Windows, macOS and Linux.
+* text=auto eol=lf
+
+# Windows launchers need CRLF.
+*.cmd text eol=crlf
+*.bat text eol=crlf
+
+# Prepared "deployed environment" states are JSON: keep them byte-stable.
+*.tfstate text eol=lf
+.terraform.lock.hcl text eol=lf
+
+# Binary
+*.png binary
+*.jpg binary
+*.zip binary

@@ -1,0 +1,17 @@
+{
+  "id": "10",
+  "slug": "identity-access-management",
+  "title": "Identity and Access Management",
+  "phase": 2,
+  "status": "ready",
+  "project": true,
+  "roots": {
+    "dev": "envs/dev",
+    "prod": "envs/prod",
+    "bootstrap": "bootstrap"
+  },
+  "state": {
+    "dev": "state/dev.tfstate"
+  },
+  "state_from": "starter"
+}
