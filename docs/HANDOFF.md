@@ -57,7 +57,7 @@ Read with [AUTHORING.md](AUTHORING.md), [VALIDATION.md](VALIDATION.md) and [ROAD
 | `failure.py` | Failure-domain analyser: zone loss (capacity per workload) and region loss (data stores, RPO) |
 | `baseline.py` | Re-run earlier lessons' requirements by ID (capstone baselines) |
 | `docs.py` | Markdown reader + rubric checks (ADRs, diagrams, tables compared with the plan) |
-| `app/` | The course app (`python course.py`): stdlib HTTP server on 127.0.0.1 (`server.py`), markdown renderer, Monaco cache (`vendor.py`, filled by `setup`, CDN/plain fallback), static UI. Reuses `guide.tasks`/progress and `runner.check` |
+| `app/` | The course app (`python course.py`): stdlib HTTP server on 127.0.0.1 (`server.py`), markdown renderer, Monaco cache (`vendor.py`, filled by `setup`, CDN/plain fallback), in-app updates (`update.py`: fast-forward only, restarts in a new process; hidden unless the clone tracks a remote branch), static UI. Reuses `guide.tasks`/progress and `runner.check` |
 | `guide.py` | Guided mode (`python course.py`): lesson intro → lab → challenge → troubleshooting → next lesson, progress in `workspace/.progress.json`; `check-all` batch checks |
 | `runner.py` | Multi-root plans, prepared state, lesson tests, module tests (`modules/*/tests`), module-scoped lesson tests |
 

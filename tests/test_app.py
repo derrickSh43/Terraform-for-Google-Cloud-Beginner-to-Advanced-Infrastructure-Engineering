@@ -1,13 +1,16 @@
 import base64
 import hashlib
 import io
+import shutil
+import subprocess
 import tarfile
 import tempfile
 import unittest
 from pathlib import Path
+from unittest import mock
 
 from coursekit import paths
-from coursekit.app import markdown, server, vendor
+from coursekit.app import markdown, server, update, vendor
 
 
 class MarkdownTest(unittest.TestCase):
@@ -34,6 +37,80 @@ class MarkdownTest(unittest.TestCase):
             for name in ("README.md", "lab.md", "challenge.md"):
                 if l.sub(name).exists():
                     self.assertTrue(markdown.render(l.sub(name).read_text(encoding="utf-8")).strip(), f"{l.id} {name}")
+
+
+@unittest.skipUnless(shutil.which("git"), "needs git")
+class UpdateTest(unittest.TestCase):
+    """Against a local 'GitHub' repository: no network."""
+
+    def git(self, cwd, *args):
+        subprocess.run(["git", "-c", "user.name=t", "-c", "user.email=t@example.com", "-c", "commit.gpgsign=false", *args],
+                       cwd=cwd, check=True, capture_output=True)
+
+    def publish(self, text, message):
+        (self.origin / "lab.md").write_text(text)
+        self.git(self.origin, "add", "-A")
+        self.git(self.origin, "commit", "-m", message)
+
+    def setUp(self):
+        tmp = tempfile.TemporaryDirectory(ignore_cleanup_errors=True)
+        self.addCleanup(tmp.cleanup)
+        top = Path(tmp.name).resolve()
+        self.origin, self.clone = top / "origin", top / "clone"
+        self.origin.mkdir()
+        self.git(self.origin, "init", "-b", "main")
+        (self.origin / ".gitignore").write_text("workspace/\n")
+        self.publish("one\n", "first")
+        self.git(top, "clone", str(self.origin), str(self.clone))
+        (self.clone / "workspace").mkdir()
+        (self.clone / "workspace" / "main.tf").write_text("my work")
+        p = mock.patch.object(paths, "ROOT", self.clone)
+        p.start()
+        self.addCleanup(p.stop)
+
+    def test_update_keeps_workspace(self):
+        self.assertEqual(update.status()["count"], 0)
+        self.publish("two\n", "Fix lesson 03")
+        st = update.status()
+        self.assertEqual((st["supported"], st["count"], st["changes"]), (True, 1, ["Fix lesson 03"]))
+        update.apply()
+        self.assertEqual((self.clone / "lab.md").read_text(), "two\n")
+        self.assertEqual((self.clone / "workspace" / "main.tf").read_text(), "my work")
+        self.assertEqual(update.status()["count"], 0)
+
+    def test_never_overwrites_local_changes(self):
+        (self.clone / "lab.md").write_text("mine\n")
+        self.publish("two\n", "Fix")
+        update.status()
+        with self.assertRaisesRegex(update.UpdateError, "you changed course files.*lab.md"):
+            update.apply()
+        self.assertEqual((self.clone / "lab.md").read_text(), "mine\n")
+
+    def test_local_commits_are_not_merged(self):
+        (self.clone / "other.md").write_text("mine\n")
+        self.git(self.clone, "add", "-A")
+        self.git(self.clone, "commit", "-m", "mine")
+        self.publish("two\n", "Fix")
+        update.status()
+        with self.assertRaisesRegex(update.UpdateError, "commits of its own"):
+            update.apply()
+
+    def test_hidden_when_not_a_tracking_clone(self):
+        self.git(self.clone, "switch", "-c", "local-branch")
+        self.assertFalse(update.status()["supported"])
+        (self.clone / "sub").mkdir()
+        with mock.patch.object(paths, "ROOT", self.clone / "sub"):      # the course copied into another repository
+            self.assertFalse(update.status()["supported"])
+
+    def test_offline_is_reported_not_raised(self):
+        self.git(self.clone, "remote", "set-url", "origin", str(self.origin) + "-gone")
+        st = update.status()
+        self.assertIn("internet", st["error"])
+        self.assertEqual(st["count"], 0)
+
+    def test_not_during_a_check(self):
+        with server._check_lock, self.assertRaises(server.ApiError):
+            server.run_update()
 
 
 class ServerHelpersTest(unittest.TestCase):

@@ -15,7 +15,10 @@ import argparse
 import io
 import json
 import shutil
+import subprocess
+import sys
 import threading
+import uuid
 import webbrowser
 from contextlib import redirect_stdout
 from http import HTTPStatus
@@ -25,7 +28,7 @@ from urllib.parse import parse_qs, urlparse
 
 from .. import guide, paths, runner
 from .. import terraform as tf
-from . import markdown, vendor
+from . import markdown, update, vendor
 
 STATIC = Path(__file__).with_name("static")
 EDITABLE = (".tf", ".tfvars", ".tftpl", ".tpl", ".sh", ".yml", ".yaml", ".md", ".hcl", ".json", ".txt", ".ps1")
@@ -34,6 +37,8 @@ MIME = {".html": "text/html", ".js": "text/javascript", ".css": "text/css", ".js
         ".svg": "image/svg+xml", ".ttf": "font/ttf", ".woff": "font/woff", ".woff2": "font/woff2", ".map": "application/json"}
 
 _check_lock = threading.Lock()
+_restart = threading.Event()
+BOOT = uuid.uuid4().hex             # changes when the app restarts
 
 
 class ApiError(Exception):
@@ -110,7 +115,7 @@ def course_json() -> dict:
                         "started": l.workspace.exists(),
                         "done": l.status == "ready" and guide.next_step(l, prog) is None and bool(st)})
     return {"lessons": lessons, "current": cur.id if cur else (ready[-1].id if ready else None),
-            "editor": vendor.monaco_url()}
+            "editor": vendor.monaco_url(), "boot": BOOT}
 
 
 def run_check(l: paths.Lesson, which: str, challenge: bool) -> dict:
@@ -123,6 +128,19 @@ def run_check(l: paths.Lesson, which: str, challenge: bool) -> dict:
     data = rep.to_json()
     data["passed_ids"] = sorted(o.req.id for o in rep.outcomes if o.passed)
     return data
+
+
+def run_update() -> dict:
+    """Update the course files. The caller restarts the app when this says so."""
+    if not _check_lock.acquire(blocking=False):
+        raise ApiError(409, "a check is running - update when it has finished")
+    try:
+        update.apply()
+    except update.UpdateError as exc:
+        raise ApiError(409, str(exc)) from exc
+    finally:
+        _check_lock.release()
+    return {"ok": True, "boot": BOOT}
 
 
 def fmt(l: paths.Lesson, which: str) -> dict:
@@ -235,6 +253,13 @@ class Handler(BaseHTTPRequestHandler):
             route = (method, url.path)
             if route == ("GET", "/api/course"):
                 return self._json(course_json())
+            if route == ("GET", "/api/update"):
+                return self._json(update.status())
+            if route == ("POST", "/api/update"):
+                self._json(run_update())
+                _restart.set()
+                threading.Thread(target=self.server.shutdown, daemon=True).start()
+                return None
             l = _lesson(lid)
             if route == ("GET", "/api/lesson"):
                 return self._json(lesson_json(l))
@@ -291,4 +316,11 @@ def serve(port: int = 8024, open_browser: bool = True, lesson: str | None = None
         print("\nStopped. Your work and progress are saved.")
     finally:
         httpd.server_close()
-    return 0
+    if not _restart.is_set():
+        return 0
+    print("Updated. Restarting the course app...")
+    cmd = [sys.executable, str(paths.ROOT / "course.py"), "app", "--port", str(httpd.server_address[1]), "--no-browser"]
+    try:
+        return subprocess.call(cmd)         # new process: Python code may have changed too
+    except KeyboardInterrupt:
+        return 0

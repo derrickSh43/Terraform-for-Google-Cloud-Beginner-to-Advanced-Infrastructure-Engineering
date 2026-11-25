@@ -48,6 +48,8 @@ async function boot() {
   renderDrawer();
   const editorReady = loadEditor();          // load the editor while the lesson renders
   S.editorReady = editorReady;
+  $("#btn-update").onclick = runUpdate;
+  checkUpdate(false);
   const want = new URLSearchParams(location.search).get("lesson");
   await openLesson(want || S.course.current);
 }
@@ -65,6 +67,40 @@ async function openLesson(id) {
   render();
   renderResults();
   await switchTarget(S.stage === "broken" ? "broken" : "workspace", true);
+}
+
+// ------------------------------------------------------------------ updates
+async function checkUpdate(asked) {
+  const b = $("#btn-update");
+  try {
+    b.disabled = true;
+    const u = await api("/api/update").finally(() => (b.disabled = false));
+    S.update = u.supported ? u : null;
+    b.hidden = !u.supported;
+    b.classList.toggle("primary", u.count > 0);
+    b.textContent = u.count ? `⬆ Update available (${u.count})` : "Check for updates";
+    b.title = `Your version: ${u.version || "?"}. Updating keeps your work and progress.`;
+    if (asked && u.error) toast(u.error, "bad");
+    else if (asked && !u.count) toast("You have the latest version ✓", "ok");
+  } catch (e) { if (asked) toast(e.message, "bad"); }       // at start-up, stay quiet when offline
+}
+
+async function runUpdate() {
+  if (!S.update?.count) return checkUpdate(true);
+  if (S.checking) { toast("A check is running. Update when it has finished."); return; }
+  const list = S.update.changes.map((c) => `• ${c}`).join("\n");
+  if (!confirm(`What's new:\n\n${list}\n\nUpdate and restart the app? Your work and progress are kept.`)) return;
+  const b = $("#btn-update");
+  try {
+    if (S.dirty.size) await saveAll();
+    b.disabled = true; b.textContent = "Updating…";
+    const { boot } = await api("/api/update", {});
+    for (let i = 0; i < 60; i++) {                          // wait for the restarted app
+      await new Promise((r) => setTimeout(r, 1000));
+      try { if ((await api("/api/course")).boot !== boot) { location.reload(); return; } } catch { /* restarting */ }
+    }
+    toast("Updated, but the app did not come back. Start it again with: python course.py", "bad");
+  } catch (e) { alert(e.message); b.disabled = false; checkUpdate(false); }
 }
 
 // ------------------------------------------------------------------ header + drawer

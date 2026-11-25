@@ -6,7 +6,8 @@ infrastructure with Terraform, from your first bucket to an enterprise platform.
 **No Google Cloud account. No credit card. No cloud bill.** Every lab is checked
 locally with `terraform fmt`, `validate`, an offline `plan` and automated
 requirement checks. The only network access is `terraform init` downloading
-providers from the Terraform Registry, and the setup step does that once.
+providers from the Terraform Registry (the setup step does that once), and the
+app asking GitHub whether there's a newer version of the course.
 
 > **The course's definition of success:** can you write, structure, validate and
 > *explain* Terraform that would provision the intended GCP architecture?
@@ -52,6 +53,15 @@ python course.py check-all --challenge    # every started lesson, one summary
 
 Prefer a container? Open the repo in VS Code and choose **Reopen in Container**.
 Terraform, Python and tflint are preinstalled. See [docs/SETUP.md](docs/SETUP.md).
+
+## Getting updates
+
+The app looks for fixes when it starts. When there are some, **⬆ Update available** appears at the top
+right: it shows what's new, updates the course files, and restarts the app. Your work and progress are
+in `workspace/`, which updates never touch. A lesson you've already started keeps the files you have.
+
+If you cloned the course before this button existed, get it once with `git pull`, then restart the app.
+A copy downloaded as a ZIP can't update itself, so clone it instead.
 
 ## What `course check` does
 
