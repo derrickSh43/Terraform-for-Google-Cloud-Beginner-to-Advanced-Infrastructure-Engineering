@@ -137,7 +137,8 @@ def budget_api(plan):
 
 @requirement("C2.4", "billing_account variable has a validation rule",
              hint="Add a validation block with a regex; tests/challenge/billing_account.tftest.hcl must pass.",
-             level="challenge")
+             level="challenge",
+             test="billing_account.tftest.hcl")
 def billing_validation(plan):
     # The behaviour is proven by the native test; here we confirm the contract exists.
     require("billing_account" in plan.variables(), 'variable "billing_account" is not declared')

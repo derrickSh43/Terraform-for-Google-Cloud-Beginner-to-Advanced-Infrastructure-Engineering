@@ -43,7 +43,7 @@ The `tests (modules/project-factory)` stage stays red until you write that modul
 4. `google_billing_budget.this` (for_each): scoped with `budget_filter { projects = ["projects/${google_project.this[each.key].number}"] }`,
    amount in USD, thresholds 0.5, 0.9, 1.0 and 1.0 `FORECASTED_SPEND`.
 5. `google_compute_shared_vpc_host_project` for `var.shared_vpc_host`, and
-   `google_compute_shared_vpc_service_project` for each project with `shared_vpc = true`.
+   `google_compute_shared_vpc_service_project` `this` for each project with `shared_vpc = true`.
 6. Output `project_ids` (a map: project key → project ID).
 7. Call it in `envs/platform/main.tf` as `module "projects"`, with `folders = module.landing_zone.env_folders`
    and `shared_vpc_host = "meridian-network"`.

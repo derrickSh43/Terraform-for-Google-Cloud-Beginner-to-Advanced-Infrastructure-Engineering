@@ -145,7 +145,7 @@ def _state_is_fresh(lesson: paths.Lesson) -> list[str]:
 
 def _run(case: Case, idx: int) -> CaseResult:
     build = f"t{case.lesson.id}-{idx}"
-    rep = runner.check(case.lesson, case.target, challenge=case.challenge, build_name=build)
+    rep = runner.check(case.lesson, case.target, challenge=case.challenge, build_name=build, jobs=1)
     try:
         if case.starter:
             bad = {st for st in rep.failed_stages if st.split(" ")[0] in ("fmt", "init", "validate", "files")}

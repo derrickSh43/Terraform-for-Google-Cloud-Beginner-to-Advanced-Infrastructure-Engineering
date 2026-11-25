@@ -12,6 +12,7 @@ from __future__ import annotations
 import os
 import re
 import shutil
+import stat
 import subprocess
 from dataclasses import dataclass
 from pathlib import Path
@@ -93,10 +94,59 @@ def env() -> dict[str, str]:
     return e
 
 
+def _is_junction(p: Path) -> bool:
+    try:
+        return getattr(p.lstat(), "st_reparse_tag", 0) == getattr(stat, "IO_REPARSE_TAG_MOUNT_POINT", -1)
+    except OSError:
+        return False
+
+
+def _locked(lock: Path) -> set[tuple[str, str]]:
+    """{("registry.terraform.io/hashicorp/google", "8.12.0")} from a dependency lock file."""
+    text = lock.read_text(encoding="utf-8", errors="replace") if lock.is_file() else ""
+    return set(re.findall(r'(?m)^provider "([^"]+)" \{\s*version\s*=\s*"([^"]+)"', text))
+
+
+def link_providers(cwd: Path) -> None:
+    """Windows, before init: give a build folder junctions to the cached providers its lock file names.
+
+    Terraform links providers from the cache, but on Windows that needs symlink rights most people
+    don't have, so it copies 115 MB into every build folder instead. Junctions need no rights.
+    Only locked versions are linked: init verifies those and leaves them alone. Anything else it may
+    (re)install, and an install must never write through a link into the cache other checks are using.
+    """
+    if os.name != "nt" or paths.BUILD not in cwd.resolve().parents:
+        return
+    try:
+        import _winapi
+
+        top = cwd / ".terraform" / "providers"
+        if _is_junction(top):               # made by an older version of this function
+            os.rmdir(top)
+        locked = _locked(cwd / ".terraform.lock.hcl")
+        for pkg in paths.PLUGIN_CACHE.glob("*/*/*/*/*"):           # host/namespace/type/version/os_arch
+            rel = pkg.relative_to(paths.PLUGIN_CACHE)
+            link = top / rel
+            if ("/".join(rel.parts[:3]), rel.parts[3]) not in locked:
+                if _is_junction(link):
+                    os.rmdir(link)          # removes the link, not the cached provider
+                continue
+            if _is_junction(link):
+                continue
+            if link.is_dir():
+                shutil.rmtree(link)         # a copy made before the junction existed
+            link.parent.mkdir(parents=True, exist_ok=True)
+            _winapi.CreateJunction(str(pkg), str(link))
+    except OSError:                         # e.g. an exFAT drive: Terraform copies, as before
+        pass
+
+
 def run(args: list[str], cwd: Path, timeout: int = 600) -> Result:
     exe = binary()
     if not exe:
         raise SystemExit("terraform was not found on PATH. Run `python course.py setup` for help.")
+    if args[0] == "init":
+        link_providers(cwd)
     proc = subprocess.run(
         [exe, *args],
         cwd=cwd,
@@ -127,39 +177,44 @@ def sync_build_dir(
     """
     roots = roots or [""]
     build.mkdir(parents=True, exist_ok=True)
-    for item in sorted(build.rglob("*"), key=lambda p: len(p.parts), reverse=True):
-        rel = item.relative_to(build)
-        if ".terraform" in rel.parts or item.name == ".terraform.lock.hcl":
-            continue
-        if item.is_dir():
-            if not any(item.iterdir()):
-                item.rmdir()
-        else:
-            item.unlink()
-
-    for f in src.rglob("*"):
-        rel = f.relative_to(src)
-        if any(part in _SKIP_DIRS for part in rel.parts) or f.name in _SKIP_FILES:
-            continue
-        if f.is_file() and (f.suffix in _COPY_SUFFIXES or f.name == ".terraform.lock.hcl"):
-            dest = build / rel
-            dest.parent.mkdir(parents=True, exist_ok=True)
-            shutil.copy2(f, dest)
-
+    wanted: dict[Path, Path | bytes] = {}                # build path -> source file, or its contents
+    for f in _walk(src, _SKIP_DIRS):
+        if f.name not in _SKIP_FILES and (f.suffix in _COPY_SUFFIXES or f.name == ".terraform.lock.hcl"):
+            wanted[build / f.relative_to(src)] = f
     for root in roots:
         rdir = build / root
         rdir.mkdir(parents=True, exist_ok=True)
         if not (src / root / ".terraform.lock.hcl").exists() and paths.SHARED_LOCK.exists():
-            shutil.copy2(paths.SHARED_LOCK, rdir / ".terraform.lock.hcl")
-        (rdir / OVERRIDE_NAME).write_text(OVERRIDE_BODY, encoding="utf-8")
+            wanted[rdir / ".terraform.lock.hcl"] = paths.SHARED_LOCK
+        wanted[rdir / OVERRIDE_NAME] = OVERRIDE_BODY.encode()
         if states and root in states and states[root].exists():
-            shutil.copy2(states[root], rdir / "course.tfstate")
-
+            wanted[rdir / "course.tfstate"] = states[root]
     if extra and extra.is_dir():
-        dest = build / roots[0] / "tests"
-        dest.mkdir(parents=True, exist_ok=True)
         for f in extra.glob("*.tftest.hcl"):
-            shutil.copy2(f, dest / f.name)
+            wanted[build / roots[0] / "tests" / f.name] = f
+
+    for f in _walk(build, {".terraform"}):
+        if f not in wanted and f.name != ".terraform.lock.hcl":
+            f.unlink()
+    for dirpath, dirs, _ in os.walk(build, topdown=False):
+        d = Path(dirpath)
+        if ".terraform" not in d.relative_to(build).parts and d != build and not any(d.iterdir()):
+            d.rmdir()
+    for dest, source in wanted.items():
+        data = source if isinstance(source, bytes) else source.read_bytes()
+        if not dest.is_file() or dest.read_bytes() != data:
+            dest.parent.mkdir(parents=True, exist_ok=True)
+            dest.write_bytes(data)
+    for root in roots:
+        (build / root).mkdir(parents=True, exist_ok=True)
+
+
+def _walk(top: Path, skip: set[str]):
+    """Every file under `top`, without entering directories named in `skip`."""
+    for dirpath, dirs, files in os.walk(top):
+        dirs[:] = [d for d in dirs if d not in skip]
+        for name in files:
+            yield Path(dirpath) / name
 
 
 def tf_files(src: Path) -> list[Path]:

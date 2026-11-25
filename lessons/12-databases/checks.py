@@ -260,7 +260,8 @@ def residency(plan):
 
 
 @requirement("C12.4", "The postgres module rejects HA on shared-core tiers",
-             hint="cross-variable validation; tests/challenge/postgres_module.tftest.hcl must pass", level="challenge")
+             hint="cross-variable validation; tests/challenge/postgres_module.tftest.hcl must pass", level="challenge",
+             test="postgres_module.tftest.hcl")
 def ha_validation(plan):
     mods = plan.configuration.get("root_module", {}).get("module_calls", {})
     require(any("availability_type" in m.get("module", {}).get("variables", {}) for m in mods.values()),

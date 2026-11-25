@@ -247,7 +247,8 @@ def global_routing(plan):
 
 
 @requirement("C18.4", "The VPN module rejects bad link ranges",
-             hint="validation on link_ranges; tests/challenge/ha_vpn_module.tftest.hcl must pass", level="challenge")
+             hint="validation on link_ranges; tests/challenge/ha_vpn_module.tftest.hcl must pass", level="challenge",
+             test="ha_vpn_module.tftest.hcl")
 def link_validation(plan):
     mods = _hub(plan).configuration.get("root_module", {}).get("module_calls", {})
     require(any("link_ranges" in m.get("module", {}).get("variables", {}) for m in mods.values()), "No module declares link_ranges")

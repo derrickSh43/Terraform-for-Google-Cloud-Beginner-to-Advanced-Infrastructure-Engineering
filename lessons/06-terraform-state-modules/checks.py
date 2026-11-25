@@ -226,7 +226,8 @@ def firewall_map(plan):
 
 # ------------------------------------------------------------------ challenge
 @requirement("C6.1", "The VM module validates its machine_type",
-             hint="validation block on modules/vm-service variable machine_type; tests/challenge must pass.", level="challenge")
+             hint="validation block on modules/vm-service variable machine_type; tests/challenge must pass.", level="challenge",
+             test="vm_service_module.tftest.hcl")
 def module_validation(plan):
     vm_mods = [mod for _, src, mod in _walk_module_configs(plan.configuration.get("root_module", {}))
                if "machine_type" in mod.get("variables", {})]

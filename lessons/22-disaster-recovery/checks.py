@@ -193,7 +193,8 @@ def backup_location(plan):
 
 @requirement("C22.4", "The postgres module refuses a 'DR' replica in the primary's own region",
              hint="validation: dr_region == null || dr_region != region; tests/challenge/modules/postgres must pass",
-             level="challenge")
+             level="challenge",
+             test="replica.tftest.hcl")
 def dr_validation(plan):
     var = next(iter(plan.source.blocks("variable", "dr_region", under="modules/postgres")), None)
     require(var is not None and var.block("validation") and "var.region" in var.body,

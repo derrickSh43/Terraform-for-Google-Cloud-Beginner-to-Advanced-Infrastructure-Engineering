@@ -25,7 +25,9 @@ an empty `modules/ha-vpn`, and `state/dev.tfstate` (dev after lesson 17).
 
 ## Part B — HA VPN with BGP (R18.2 – R18.5)
 
-`modules/ha-vpn` needs a `versions.tf` with `configuration_aliases = [google.peer]`. Then:
+`modules/ha-vpn` needs a `versions.tf` with `configuration_aliases = [google.peer]`. Inputs: `name`, `region`,
+`network_id`, `peer_network_id`, `local_asn` and `peer_asn`, plus `advertised_ranges` (default `[]`) and `link_ranges`
+(default `["169.254.0.0/30", "169.254.0.4/30"]`). Name each pair of resources `local` and `peer`. Then:
 
 1. One `google_compute_ha_vpn_gateway` per side (`provider = google.peer` on the peer side).
 2. One `google_compute_router` per side: the local one with `bgp { asn = var.local_asn  advertise_mode = "CUSTOM"

@@ -226,7 +226,8 @@ def exclusions(plan):
 
 @requirement("C23.4", "The factory rejects names that would make an invalid project ID",
              hint="validation: length(name) <= 25 (ID = name + '-' + 4 hex chars, max 30); tests/challenge/modules/project-factory must pass",
-             level="challenge")
+             level="challenge",
+             test="id_length.tftest.hcl")
 def id_length(plan):
     var = next(iter(plan.source.blocks("variable", "projects", under="modules/project-factory")), None)
     require(var is not None and any("length(" in v.body and "keys(var.projects)" in v.body for v in var.blocks("validation")),

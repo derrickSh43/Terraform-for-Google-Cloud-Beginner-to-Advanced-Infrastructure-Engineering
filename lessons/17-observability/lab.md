@@ -28,10 +28,10 @@ module "observability" {
 tfvars: `oncall_email` (`oncall-<env>@meridianbooks.example`), `audit_retention_days` (dev 90, prod 400).
 
 Then, in `modules/observability` (inputs: `project_id`, `environment`, `region`, `oncall_email`,
-`lb_ip`, `dead_letter_subscription`, `worker_service_name`, `audit_retention_days`, `labels`):
+`lb_ip`, `dead_letter_subscription`, `worker_service_name`, `labels`, and `audit_retention_days` with a default):
 
 1. `google_monitoring_notification_channel`, type `email`, `labels = { email_address = var.oncall_email }`.
-2. `google_monitoring_uptime_check_config`: `period = "60s"`, `timeout = "10s"`,
+2. `google_monitoring_uptime_check_config` `storefront`: `period = "60s"`, `timeout = "10s"`,
    `http_check { path = "/"  port = 80 }`, `monitored_resource { type = "uptime_url"  labels = { project_id, host = var.lb_ip } }`.
 3. An alert policy on `monitoring.googleapis.com/uptime_check/check_passed` for this check's
    `uptime_check_id`: aggregate with `ALIGN_NEXT_OLDER` + `REDUCE_COUNT_FALSE`, fire when the count is `> 1`

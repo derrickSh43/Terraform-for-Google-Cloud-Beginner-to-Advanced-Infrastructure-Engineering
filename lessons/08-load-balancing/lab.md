@@ -21,7 +21,8 @@ Add two outputs (with descriptions) to `modules/vm-service/outputs.tf`:
 ### Step 2: build `modules/http-lb`
 
 Inputs: `name_prefix`, `zone`, `instances` (list of VM self links), `port`
-(default 80), `health_check_path` (default `"/"`). Build the chain back to front:
+(default 80), `health_check_path` (default `"/"`). Name the forwarding rule `http`
+and every other resource `this` (`google_compute_url_map.this` and so on). Build the chain back to front:
 
 1. `google_compute_health_check`: `http_health_check { port = var.port  request_path = var.health_check_path }`,
    interval 10 s, timeout 5 s, unhealthy threshold 3.

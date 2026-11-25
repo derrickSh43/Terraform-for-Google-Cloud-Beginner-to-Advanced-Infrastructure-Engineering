@@ -13,7 +13,8 @@ A lesson declares requirements like this:
 
 A check passes by returning normally and fails by calling `require(False, ...)`
 (or raising CheckFailed). `level="challenge"` requirements only run with
-`course check NN --challenge`.
+`course check NN --challenge`. `test="name.tftest.hcl"` ties a requirement to a
+lesson test: it only passes when that test passes too.
 """
 
 from __future__ import annotations
@@ -40,6 +41,7 @@ class Requirement:
     hint: str
     level: str
     func: Callable[[Plan], None]
+    test: str = ""                  # a lesson test (*.tftest.hcl) that must also pass
 
 
 @dataclass
@@ -54,12 +56,12 @@ _REGISTRY: list[Requirement] = []
 _LOAD_LOCK = threading.Lock()
 
 
-def requirement(rid: str, title: str, *, hint: str = "", level: str = "lab"):
+def requirement(rid: str, title: str, *, hint: str = "", level: str = "lab", test: str = ""):
     if level not in ("lab", "challenge"):
         raise ValueError(f"level must be 'lab' or 'challenge', got {level!r}")
 
     def deco(func: Callable[[Plan], None]):
-        _REGISTRY.append(Requirement(rid, title, hint, level, func))
+        _REGISTRY.append(Requirement(rid, title, hint, level, func, test))
         return func
 
     return deco

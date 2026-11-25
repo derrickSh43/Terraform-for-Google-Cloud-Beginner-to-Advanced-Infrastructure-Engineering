@@ -11,6 +11,11 @@ python course.py check 12 --challenge
 | C12.3 | **Data residency.** The secret's payload must be stored only in `us-central1` and `us-east1`: replace `replication { auto {} }` with `user_managed` replicas. |
 | C12.4 | **No HA on shared-core.** In the postgres module, reject `availability_type = "REGIONAL"` with a shared-core tier (a validation that references `var.tier`), and accept only ZONAL/REGIONAL. `tests/challenge/postgres_module.tftest.hcl` must pass. It mocks **both** the google and random providers. |
 
+## Contract for the lesson test
+
+The test calls the module on its own with `name_prefix`, `region`, `network_id` and `labels`, so every other variable needs a
+default. It looks for `google_sql_database_instance.this`.
+
 ## Think about it
 
 - With IAM authentication (C12.2), what happens to the password user? Could you delete it, and what would break first?

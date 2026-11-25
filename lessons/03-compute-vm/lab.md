@@ -20,8 +20,8 @@ Nothing checks this yet: R3.2 checks the zone once the VM uses it in Step 2.
 
 ## Step 2 — The VM (R3.1, R3.2, R3.3, R3.6)
 
-In `compute.tf`, create `google_compute_instance` **named `web`**. Lesson tests
-refer to `google_compute_instance.web`.
+In `compute.tf`, create the VM as `resource "google_compute_instance" "web"`. The block name matters:
+R3.1 checks it, and the challenge test refers to `google_compute_instance.web`.
 
 - `name = "meridian-web-1"`, `machine_type = "e2-micro"`, `zone = var.zone`
 - `tags = ["web"]` and the same standard labels as your bucket in `main.tf`, plus a role:

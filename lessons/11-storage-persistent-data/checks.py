@@ -230,7 +230,8 @@ def snap_location(plan):
 
 
 @requirement("C11.4", "vm-service validates the data disk size",
-             hint="validation: 0 or 10-1000 GB; tests/challenge/vm_service_disk.tftest.hcl must pass", level="challenge")
+             hint="validation: 0 or 10-1000 GB; tests/challenge/vm_service_disk.tftest.hcl must pass", level="challenge",
+             test="vm_service_disk.tftest.hcl")
 def disk_validation(plan):
     mods = plan.configuration.get("root_module", {}).get("module_calls", {})
     require(any("data_disk_size_gb" in m.get("module", {}).get("variables", {}) for m in mods.values()), "No module declares data_disk_size_gb")

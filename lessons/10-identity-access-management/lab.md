@@ -35,11 +35,12 @@ see them as deployed objects.
 R10.4 – R10.6 are checked in Part C: until the legacy file is gone there are two
 `meridian-ci` accounts.
 
-In `modules/ci-identity/`:
+In `modules/ci-identity/` (inputs `project_id`, `assets_bucket` and `impersonators`; give every other variable a default,
+including `permissions`, the list in step 2):
 
 1. `google_service_account.this`: `account_id = var.account_id` (default `meridian-ci`),
    `display_name = "CI pipeline"`. Same values as the deployed account.
-2. `google_project_iam_custom_role.deployer` with an explicit list. CI rolls the web MIG to a new template:
+2. `google_project_iam_custom_role.deployer` with `permissions = var.permissions`, an explicit list. CI rolls the web MIG to a new template:
 
    ```
    compute.instanceGroupManagers.get      compute.instanceGroupManagers.update

@@ -17,7 +17,7 @@ may be destroyed or replaced.
 ## Part A — A data disk with snapshots (R11.1 – R11.4)
 
 All of this goes in `modules/vm-service`, switched on by a new variable
-`data_disk_size_gb` (default `0` = no disk). Use `count = var.data_disk_size_gb > 0 ? 1 : 0`
+`data_disk_size_gb` (default `0` = no disk). Also add `snapshot_retention_days` (default `7`). Use `count = var.data_disk_size_gb > 0 ? 1 : 0`
 on every new resource.
 
 1. `google_compute_disk` `data`: `name = "meridian-${var.name}-data"`, `zone = var.zone`,
@@ -28,7 +28,7 @@ on every new resource.
 3. In the **existing** `google_compute_instance.this`, add
    `lifecycle { ignore_changes = [attached_disk] }`. Read the README section
    "Attaching without recreating" to see why.
-4. `google_compute_resource_policy` with a daily `snapshot_schedule_policy`,
+4. `google_compute_resource_policy` `snapshots` with a daily `snapshot_schedule_policy`,
    `max_retention_days = var.snapshot_retention_days`, and `on_source_disk_delete = "KEEP_AUTO_SNAPSHOTS"`.
    Resource policies are regional. Derive the region from the zone:
    `join("-", slice(split("-", var.zone), 0, 2))`.
@@ -52,7 +52,7 @@ In `modules/foundation`, add `google_storage_bucket` `backups` (`"${var.project_
 
 Environments: `backup_retention_days` (dev 7, prod 30).
 
-The app tier writes backups. Add `writable_buckets` (`list(string)`) to `vm-service`,
+The app tier writes backups. Add `writable_buckets` (`list(string)`, default `[]`) to `vm-service`,
 with a `google_storage_bucket_iam_member` per bucket and `roles/storage.objectCreator`.
 Pass `[module.foundation.backups_bucket]` to the app.
 

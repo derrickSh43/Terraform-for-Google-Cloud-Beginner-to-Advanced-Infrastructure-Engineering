@@ -14,6 +14,10 @@ python course.py check 20 --challenge
 The offline import simulator evaluates `for_each` when it's a literal (or a local holding one),
 not `var.*`. Real Terraform accepts any value known at plan time.
 
+## Contract for the lesson test
+
+The test runs inside `modules/reporting` without `export_quarters`, so give it a default of `[]`.
+
 ## Think about it
 
 - `removed` with `destroy = false` and `terraform state rm` both stop Terraform managing an object. Why is the block better in a team?

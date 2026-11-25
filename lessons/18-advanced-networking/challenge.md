@@ -11,6 +11,12 @@ python course.py check 18 --challenge
 | C18.3 | **Global routing in the hub.** Add a `routing_mode` variable to `modules/network` (default `REGIONAL`, so dev and prod don't change) and set the hub to `GLOBAL`, so VPN-learned routes reach every region. |
 | C18.4 | **The VPN module validates `link_ranges`:** exactly two **different** /30s in `169.254.0.0/16`. The lesson's test runs inside `modules/ha-vpn` with both `google` and `google.peer` mocked. |
 
+## Contract for the lesson test
+
+The test runs inside `modules/ha-vpn` with `name`, `region`, `network_id`, `peer_network_id`, `local_asn` and
+`peer_asn`, so every other variable needs a default. It looks for `google_compute_router_peer.local` and
+`google_compute_router_interface.peer` (both with `count`).
+
 ## Think about it
 
 - Changing `routing_mode` on the deployed dev VPC would be an in-place update. What would it change for traffic, and when would you want it?

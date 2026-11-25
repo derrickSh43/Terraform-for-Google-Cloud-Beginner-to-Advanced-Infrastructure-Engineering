@@ -200,7 +200,8 @@ def peak(plan):
 
 @requirement("C21.4", "mig-service refuses single-zone groups and empty zones",
              hint="validation: length(var.zones) >= 2, and min_replicas >= length(var.zones); tests/challenge/modules/mig-service must pass",
-             level="challenge")
+             level="challenge",
+             test="zones.tftest.hcl")
 def mig_validation(plan):
     src = plan.source
     zones = next(iter(src.blocks("variable", "zones", under="modules/mig-service")), None)

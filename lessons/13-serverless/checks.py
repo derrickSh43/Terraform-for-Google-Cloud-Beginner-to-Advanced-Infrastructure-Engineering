@@ -233,7 +233,8 @@ def keep_releases(plan):
 
 
 @requirement("C13.4", "The Cloud Run module refuses tags and foreign registries",
-             hint="validation on var.image; tests/challenge/cloud_run_module.tftest.hcl must pass", level="challenge")
+             hint="validation on var.image; tests/challenge/cloud_run_module.tftest.hcl must pass", level="challenge",
+             test="cloud_run_module.tftest.hcl")
 def image_validation(plan):
     mods = plan.configuration.get("root_module", {}).get("module_calls", {})
     require(any("image" in m.get("module", {}).get("variables", {}) for m in mods.values()), "No module declares var.image")

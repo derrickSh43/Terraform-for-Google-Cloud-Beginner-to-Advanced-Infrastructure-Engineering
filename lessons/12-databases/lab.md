@@ -27,7 +27,9 @@ The starter is the lesson 11 solution plus two empty modules,
 
 ## Part B — The instance (R12.3 – R12.5)
 
-In `modules/postgres`, a `google_sql_database_instance`:
+In `modules/postgres` (inputs `name_prefix`, `region`, `network_id` and `labels`, plus `tier`, `availability_type`,
+`retained_backups` and `secret_readers` with defaults `"db-g1-small"`, `"ZONAL"`, `7` and `[]`), a
+`google_sql_database_instance` named `this`:
 
 - `database_version = "POSTGRES_16"`, `region`, `deletion_protection = true`
 - `settings`:

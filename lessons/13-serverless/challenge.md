@@ -11,6 +11,11 @@ python course.py check 13 --challenge
 | C13.3 | **Release images are forever.** Add a `KEEP` cleanup policy for tagged images with prefix `release-`. |
 | C13.4 | **The module refuses tags and foreign registries.** Validate `var.image` against `^<region>-docker.pkg.dev/...@sha256:<64 hex>$`. `tests/challenge/cloud_run_module.tftest.hcl` tries `:latest` and Docker Hub. |
 
+## Contract for the lesson test
+
+The test calls the module on its own with the lab's six required inputs, so every other variable needs a default. It looks for
+`google_cloud_run_v2_service.this`.
+
 ## Think about it
 
 - The canary gets 10% of traffic. What has to be true about the database schema while two revisions run side by side?

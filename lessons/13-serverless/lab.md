@@ -23,10 +23,11 @@ The starter is the lesson 12 solution plus two empty modules,
 
 ## Part B — The service (R13.3 – R13.7)
 
-In `modules/cloud-run-service`:
+In `modules/cloud-run-service` (inputs `name`, `region`, `image`, `network_id`, `subnet_id` and `labels`; give every
+other variable a default):
 
 1. `google_service_account` `meridian-${var.name}`.
-2. `google_cloud_run_v2_service`:
+2. `google_cloud_run_v2_service` `this`:
    - `ingress = "INGRESS_TRAFFIC_INTERNAL_LOAD_BALANCER"`, `invoker_iam_disabled = true`
    - `template.service_account` = the new account, `max_instance_request_concurrency = 80`
    - `scaling { min_instance_count = var.min_instances  max_instance_count = var.max_instances }` (default max 5)

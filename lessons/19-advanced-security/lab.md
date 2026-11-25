@@ -17,7 +17,7 @@ The starter is the lesson 18 solution plus three empty modules (`kms`, `cloud-ar
    - `google_kms_key_ring` `meridian-<env>` in `var.region`
    - `google_kms_crypto_key` `storage`: `purpose = "ENCRYPT_DECRYPT"`, `rotation_period = "${var.rotation_days * 86400}s"`,
      `lifecycle { prevent_destroy = true }`
-   - `google_kms_crypto_key_iam_member`: `roles/cloudkms.cryptoKeyEncrypterDecrypter` for
+   - `google_kms_crypto_key_iam_member` `storage_agent`: `roles/cloudkms.cryptoKeyEncrypterDecrypter` for
      `serviceAccount:service-${var.project_number}@gs-project-accounts.iam.gserviceaccount.com`
    - output `storage_key_id` with `depends_on = [google_kms_crypto_key_iam_member.storage_agent]`
 2. `modules/foundation` and `modules/observability`: a `kms_key_id` variable (default `null`) and, on

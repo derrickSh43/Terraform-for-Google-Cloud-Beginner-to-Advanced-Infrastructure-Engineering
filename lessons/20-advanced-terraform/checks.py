@@ -199,7 +199,8 @@ def protected(plan):
 
 @requirement("C20.4", "The module validates export quarters",
              hint='variable "export_quarters" (list(string)) with validation ^20NN-q[1-4]$; tests/challenge/modules/reporting must pass',
-             level="challenge")
+             level="challenge",
+             test="exports.tftest.hcl")
 def quarter_validation(plan):
     var = next((b for b in plan.source.blocks("variable", "export_quarters", under=MOD)), None)
     require(var and var.block("validation"), 'modules/reporting needs variable "export_quarters" with a validation block')

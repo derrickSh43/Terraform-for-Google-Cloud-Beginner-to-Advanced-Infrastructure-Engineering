@@ -14,10 +14,13 @@ def _startup_script(vm) -> str:
 
 
 # ------------------------------------------------------------------ lab
-@requirement("R3.1", "One small, low-cost VM",
-             hint='Use a shared-core type such as machine_type = "e2-micro".')
+@requirement("R3.1", "One small, low-cost VM, declared as google_compute_instance.web",
+             hint='resource "google_compute_instance" "web" with a shared-core type such as machine_type = "e2-micro".')
 def small_vm(plan):
     vm = _vm(plan)
+    require(vm.address == "google_compute_instance.web",
+            f'Your VM is {vm.address}. Declare it as resource "google_compute_instance" "web" (the lesson test and '
+            "later lessons use that name), and update everything that refers to it, such as outputs.tf")
     mt = vm.get("machine_type")
     require(mt in SMALL_TYPES, f"machine_type '{mt}' is not one of {sorted(SMALL_TYPES)} - keep course labs cheap")
 
@@ -113,7 +116,8 @@ def vm_dependencies(plan):
 
 # ------------------------------------------------------------------ challenge
 @requirement("C3.1", "machine_type is a validated variable",
-             hint="variable \"machine_type\" with a validation using contains([...], var.machine_type)", level="challenge")
+             hint="variable \"machine_type\" with a validation using contains([...], var.machine_type)", level="challenge",
+             test="machine_type.tftest.hcl")
 def machine_type_var(plan):
     require("machine_type" in plan.variables(), 'variable "machine_type" is not declared')
     require("var.machine_type" in _vm(plan).references("machine_type"), "The VM's machine_type should be var.machine_type")

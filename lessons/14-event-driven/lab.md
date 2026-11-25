@@ -34,18 +34,18 @@ Nothing checks this part yet: the pipeline needs the worker's URL, and the worke
 push identity. Part C wires both, and checks them.
 
 In `modules/event-pipeline` (inputs: `topic_name`, `project_number`, `region`,
-`push_endpoint`, `max_delivery_attempts` = 5, `publishers`, `labels`):
+`push_endpoint`, `labels`, and with defaults `max_delivery_attempts` = 5, `publishers` = `[]`):
 
-1. Topics `events` and `dead_letter` (`"${var.topic_name}-dead-letter"`).
+1. `google_pubsub_topic` `events` and `dead_letter` (`"${var.topic_name}-dead-letter"`).
 2. A push identity: `google_service_account` `meridian-${var.topic_name}-push`.
-3. The push subscription on `events`:
+3. `google_pubsub_subscription` `push`, on `events`:
    - `push_config { push_endpoint = var.push_endpoint  oidc_token { service_account_email = <push SA>  audience = var.push_endpoint } }`
    - `ack_deadline_seconds = 60`, `message_retention_duration = "604800s"`
    - `retry_policy` 10 s – 600 s, `dead_letter_policy` to the dead-letter topic
    - `expiration_policy { ttl = "" }`
 4. A pull subscription on the dead-letter topic (retention 7 days, never expires).
 5. The service agent (`"serviceAccount:service-${var.project_number}@gcp-sa-pubsub.iam.gserviceaccount.com"`):
-   - `google_pubsub_topic_iam_member`: publisher on the **dead-letter topic**
+   - `google_pubsub_topic_iam_member` `agent_publishes_dead_letters`: publisher on the **dead-letter topic**
    - `google_pubsub_subscription_iam_member`: subscriber on the **push subscription**
    - `google_service_account_iam_member`: `roles/iam.serviceAccountTokenCreator` on the push SA (it mints the OIDC tokens)
 6. `google_pubsub_topic_iam_member` publisher grants for `var.publishers`.

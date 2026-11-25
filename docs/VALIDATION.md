@@ -7,12 +7,12 @@
 | # | Stage | Blocking? | Notes |
 |---|---|---|---|
 | 1 | `terraform fmt -check -recursive` | no (but fails the lab) | Runs on the student's folder |
-| 2 | `terraform init` | yes | In a private build dir `.course/build/<id><l|c>/` (e.g. `03l`; short to stay under Windows path limits), using the shared plugin cache and lock file |
-| 3 | `terraform validate -json` | yes | Diagnostics are reformatted as `file:line message` |
+| 2 | `terraform init` | yes | In a private build dir `.course/build/<id><l|c>/` (e.g. `03l`; short to stay under Windows path limits), using the shared plugin cache and lock file. On Windows, locked providers are junctions to the cache (`terraform.link_providers`): without symlink rights Terraform would copy 115 MB into every root. Never link an unlocked one: Terraform reinstalls it through the link, under every other running check |
+| 3 | `terraform validate -json` | yes | Diagnostics are reformatted as `file:line message`. `plan` validates too, so this runs only when the plan failed or the root has import blocks |
 | 4 | `tflint` | no | Only when installed |
 | 5 | `terraform plan -refresh=false -out` → `terraform show -json` | yes | Fake OAuth token; plan JSON saved to the build dir |
 | 6 | `terraform test` | yes, if the lesson ships tests | Lesson tests in `tests/lab/` and `tests/challenge/` are copied into the build dir. They use `mock_provider`. |
-| 7 | Requirement checks | yes | `lessons/NN-*/checks.py` functions run against the plan |
+| 7 | Requirement checks | yes | `lessons/NN-*/checks.py` functions run against the plan. A requirement with `test=` also needs that lesson test to pass |
 
 The student's folder is never modified. Files are mirrored into the build dir,
 along with:
@@ -24,7 +24,7 @@ along with:
 ## Multi-root lessons and prepared state
 
 Lessons can declare several roots (`envs/dev`, `envs/prod`, `bootstrap`). Stages
-2–5 run for each root (`plan (dev)`, `plan (prod)`, ...). When a lesson ships a
+2–5 run for each root (`plan (dev)`, `plan (prod)`, ...), up to three at a time. When a lesson ships a
 state file for a root, the plan is computed against it (`-refresh=false`, no API
 calls), which turns "would this refactor destroy production?" into an offline
 question. See [AUTHORING.md](AUTHORING.md#multi-root-lessons-and-deployed-state-lesson-06-onward).

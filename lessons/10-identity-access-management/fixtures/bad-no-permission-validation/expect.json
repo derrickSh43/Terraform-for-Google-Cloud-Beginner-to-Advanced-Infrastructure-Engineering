@@ -1,5 +1,1 @@
-{
-  "base": "solution-challenge",
-  "level": "challenge",
-  "fail_stage": "tests"
-}
+{"base": "solution-challenge", "level": "challenge", "fail_stage": "tests", "fail_ids": ["C10.4"]}

@@ -213,7 +213,8 @@ def perimeter(plan):
 
 
 @requirement("C19.4", "The KMS module refuses slow rotation",
-             hint="validation rotation_days 1-90; tests/challenge/modules/kms must pass", level="challenge")
+             hint="validation rotation_days 1-90; tests/challenge/modules/kms must pass", level="challenge",
+             test="kms_module.tftest.hcl")
 def rotation_validation(plan):
     mods = plan.configuration.get("root_module", {}).get("module_calls", {})
     require(any("rotation_days" in m.get("module", {}).get("variables", {}) for m in mods.values()), "No module declares rotation_days")

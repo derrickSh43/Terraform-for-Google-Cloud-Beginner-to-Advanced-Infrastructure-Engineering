@@ -37,6 +37,10 @@ lessons/NN-slug/
        res = one(plan, "google_compute_router")
        require(res.get("bgp.0.asn"), "Cloud Router has no BGP ASN")
    ```
+   If a lesson test proves the requirement, add `test="name.tftest.hcl"`: it then only passes when that
+   test passes, so the app can't mark the task done over a red test. Tell students what the test relies on:
+   resource names where the lab creates them, and a "Contract for the lesson test" section in `challenge.md`
+   (names, and which inputs the test passes: every other variable needs a default).
 4. **Add fixtures.** At least one per requirement (or per pair of closely related ones):
    ```json
    {"fail_ids": ["R6.1"]}

@@ -11,6 +11,12 @@ python course.py check 19 --challenge
 | C19.3 | **VPC Service Controls, dry run.** A `google_access_context_manager_service_perimeter` around the project restricting `storage`, `sqladmin`, `secretmanager` (and `bigquery`), with `use_explicit_dry_run_spec = true`. The access policy ID is an organization-level variable. |
 | C19.4 | **Rotation guard rail.** `rotation_days` must be 1–90. The lesson test runs inside `modules/kms` (`tests/challenge/modules/kms`). |
 
+## Contract for the lesson test
+
+The test runs inside `modules/kms` with `environment`, `region`, `project_number` and `labels`, so every other
+variable needs a default. It looks for `google_kms_crypto_key.storage` and
+`google_kms_crypto_key_iam_member.storage_agent`.
+
 ## Think about it
 
 - Why start a VPC-SC perimeter in dry-run mode? What breaks most often when it's enforced?

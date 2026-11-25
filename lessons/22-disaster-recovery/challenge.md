@@ -11,6 +11,11 @@ python course.py check 22 --challenge
 | C22.3 | **Backups out of the region.** `backup_configuration.location = "us"` on the prod primary (a `backup_location` input to `postgres`, null in dev), so restores don't depend on Google's default choice. |
 | C22.4 | **Guard rail.** `postgres` rejects a `dr_region` equal to `region`. The lesson test runs inside `modules/postgres` (`tests/challenge/modules/postgres`). |
 
+## Contract for the lesson test
+
+The test runs inside `modules/postgres`, sometimes without `dr_region` or `backup_location`, so both need a default
+of `null`. It looks for `google_sql_database_instance.replica` (with `count`).
+
 ## Think about it
 
 - Generated commands go stale less often than a wiki page. What else in your runbook could be generated from configuration?

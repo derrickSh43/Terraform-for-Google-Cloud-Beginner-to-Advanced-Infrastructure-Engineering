@@ -27,7 +27,7 @@ and its grants untouched (R9.8).
 
 ### Step 2: the template (R9.1)
 
-`google_compute_instance_template` with:
+`google_compute_instance_template` `this` with:
 
 - `name_prefix = "meridian-${var.name}-"` (no `name`) and `lifecycle { create_before_destroy = true }`
 - `tags = [var.name]`, labels with `role`
@@ -38,15 +38,18 @@ and its grants untouched (R9.8).
 ### Step 3: autohealing check, MIG and autoscaler (R9.2 – R9.5)
 
 1. `google_compute_health_check` `autoheal`: HTTP on `var.port`, interval 15 s, unhealthy threshold 4.
-2. `google_compute_region_instance_group_manager`:
+2. `google_compute_region_instance_group_manager` `this`:
    `region`, `distribution_policy_zones = var.zones`, `base_instance_name`,
    `version { instance_template = google_compute_instance_template.this.id }`,
    `named_port { name = "http"  port = var.port }`,
    `auto_healing_policies { health_check = ...autoheal.id  initial_delay_sec = 180 }`,
    and an `update_policy` with `max_unavailable_fixed = 0`, `max_surge_fixed = length(var.zones)`.
    Don't set `target_size`: the autoscaler owns it.
-3. `google_compute_region_autoscaler`: `target` = the MIG, `min_replicas` 2,
+3. `google_compute_region_autoscaler` `this`: `target` = the MIG, `min_replicas` 2,
    `max_replicas` 4, `cooldown_period` 90, `cpu_utilization { target = 0.6 }`.
+
+Inputs without a default: `name`, `display_name`, `description`, `project_id`, `region`, `zones`, `subnet_id`,
+`startup_script`, `labels`. Give every other variable a default (`port` 80, `health_check_path` `"/"`, the replica counts).
 
 Variables need descriptions. Outputs: `service_account_email`, `instance_group`
 (`google_compute_region_instance_group_manager.this.instance_group`), `template_id`.

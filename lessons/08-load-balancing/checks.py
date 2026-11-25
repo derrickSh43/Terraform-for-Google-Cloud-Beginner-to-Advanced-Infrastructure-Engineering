@@ -225,7 +225,8 @@ def backend_ops(plan):
 
 @requirement("C8.4", "HTTPS is a module option, proven by a module test",
              hint="variables enable_https and domains on modules/http-lb; tests/challenge/http_lb_module.tftest.hcl must pass",
-             level="challenge")
+             level="challenge",
+             test="http_lb_module.tftest.hcl")
 def module_option(plan):
     mods = plan.configuration.get("root_module", {}).get("module_calls", {})
     lb_mods = [m for m in mods.values() if "enable_https" in m.get("module", {}).get("variables", {})]

@@ -204,7 +204,8 @@ def org_policy(plan):
 
 
 @requirement("C10.4", "The CI module refuses dangerous permissions",
-             hint="validation on var.permissions; tests/challenge/ci_identity_module.tftest.hcl must pass", level="challenge")
+             hint="validation on var.permissions; tests/challenge/ci_identity_module.tftest.hcl must pass", level="challenge",
+             test="ci_identity_module.tftest.hcl")
 def ci_validation(plan):
     mods = plan.configuration.get("root_module", {}).get("module_calls", {})
     require(any("permissions" in m.get("module", {}).get("variables", {}) for m in mods.values()), "No module declares var.permissions")

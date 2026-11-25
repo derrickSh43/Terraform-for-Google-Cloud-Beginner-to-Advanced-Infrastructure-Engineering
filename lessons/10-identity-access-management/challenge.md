@@ -11,6 +11,12 @@ python course.py check 10 --challenge
 | C10.3 | **Make keys impossible**, not just absent. A `guardrails` module with a `google_org_policy_policy` enforcing `iam.disableServiceAccountKeyCreation` on the project. |
 | C10.4 | **The CI module refuses dangerous permissions.** A validation on `var.permissions` rejects wildcards, `*.setIamPolicy`, `iam.*` and `resourcemanager.*`. `tests/challenge/ci_identity_module.tftest.hcl` must pass. |
 
+## Contract for the lesson test
+
+The test calls the module on its own with `project_id`, `assets_bucket` and `impersonators`, so every other variable needs a
+default (`github_repository` defaults to `""`: no federation). It looks for
+`google_project_iam_custom_role.deployer` and `google_iam_workload_identity_pool.github` (with `count`).
+
 ## Hints
 
 - Without `attribute_condition`, **any** GitHub repository's workflow can exchange its token with your pool. This is the most common WIF misconfiguration.

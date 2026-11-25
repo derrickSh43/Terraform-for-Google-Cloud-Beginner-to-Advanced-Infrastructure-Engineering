@@ -215,7 +215,8 @@ def filtered(plan):
 
 
 @requirement("C14.4", "The pipeline module rejects invalid delivery-attempt limits",
-             hint="validation 5-100 on max_delivery_attempts; tests/challenge/event_pipeline.tftest.hcl must pass", level="challenge")
+             hint="validation 5-100 on max_delivery_attempts; tests/challenge/event_pipeline.tftest.hcl must pass", level="challenge",
+             test="event_pipeline.tftest.hcl")
 def attempts_validation(plan):
     mods = plan.configuration.get("root_module", {}).get("module_calls", {})
     require(any("max_delivery_attempts" in m.get("module", {}).get("variables", {}) for m in mods.values()),

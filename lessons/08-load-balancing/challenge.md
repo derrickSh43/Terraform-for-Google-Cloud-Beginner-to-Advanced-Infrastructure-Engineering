@@ -11,6 +11,17 @@ python course.py check 08 --challenge
 | C8.3 | Backend operations: request logging (`log_config`, sample rate 0.5) and an explicit `connection_draining_timeout_sec` of 10–60 s. The provider default is 300 s, which slows every rollout. |
 | C8.4 | Make HTTPS a module option: `enable_https` (default `false`) and `domains`. With it off, the module builds exactly what the lab did. `tests/challenge/http_lb_module.tftest.hcl` tests both modes against the module directly. |
 
+## Contract for the lesson test
+
+The test calls the module on its own with `name_prefix`, `zone` and `instances`, so every other variable needs a default.
+It looks for these resources, so use these names:
+
+- `google_compute_managed_ssl_certificate.this`
+- `google_compute_global_forwarding_rule.https`
+- `google_compute_url_map.https_redirect`
+
+All three use `count`.
+
 ## Hints
 
 - Optional resources: `count = var.enable_https ? 1 : 0`, referenced as `google_compute_target_https_proxy.this[0].id`.

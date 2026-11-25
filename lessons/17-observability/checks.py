@@ -209,7 +209,8 @@ def sql_cpu(plan):
 
 
 @requirement("C17.4", "The module rejects a malformed on-call address",
-             hint="validation on oncall_email; tests/challenge/observability_module.tftest.hcl must pass", level="challenge")
+             hint="validation on oncall_email; tests/challenge/observability_module.tftest.hcl must pass", level="challenge",
+             test="observability_module.tftest.hcl")
 def email_validation(plan):
     mods = plan.configuration.get("root_module", {}).get("module_calls", {})
     require(any("oncall_email" in m.get("module", {}).get("variables", {}) for m in mods.values()), "No module declares oncall_email")

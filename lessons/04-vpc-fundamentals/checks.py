@@ -121,6 +121,7 @@ def flow_logs(plan):
 
 
 @requirement("C4.4", "Subnet map is validated (CIDRs and a mandatory web tier)",
-             hint="Two validation blocks on var.subnets; tests/challenge/subnets.tftest.hcl must pass.", level="challenge")
+             hint="Two validation blocks on var.subnets; tests/challenge/subnets.tftest.hcl must pass.", level="challenge",
+             test="subnets.tftest.hcl")
 def validated(plan):
     require("subnets" in plan.variables(), 'variable "subnets" is not declared')

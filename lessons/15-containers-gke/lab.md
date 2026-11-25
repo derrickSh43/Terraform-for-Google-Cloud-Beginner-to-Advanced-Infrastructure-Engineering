@@ -40,10 +40,11 @@ the ranges through the cluster that uses them, in Part B.
 
 ## Part B — The cluster module (R15.2 – R15.5, R15.7)
 
-In `modules/gke-autopilot`:
+In `modules/gke-autopilot` (inputs `name`, `project_id`, `region`, `network_id`, `subnet_id`, `master_cidr`,
+`authorized_networks` (a map, name → CIDR) and `labels`; give `release_channel` (`"REGULAR"`), `workloads` (`{}`) and any others a default):
 
 1. A node service account (`"${var.name}-nodes"`) with **only** `roles/container.defaultNodeServiceAccount`.
-2. `google_container_cluster`:
+2. `google_container_cluster` `this`:
    - `enable_autopilot = true`, `location = var.region`, `deletion_protection = true`, `network`, `subnetwork`
    - `ip_allocation_policy { cluster_secondary_range_name = "pods"  services_secondary_range_name = "services" }`
    - `private_cluster_config { enable_private_nodes = true  enable_private_endpoint = true  master_ipv4_cidr_block = var.master_cidr }`

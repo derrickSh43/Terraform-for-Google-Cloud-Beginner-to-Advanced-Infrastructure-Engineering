@@ -215,7 +215,8 @@ def costs(plan):
 
 
 @requirement("C15.4", "The module rejects public authorized networks",
-             hint="validation on var.authorized_networks; tests/challenge/gke_module.tftest.hcl must pass", level="challenge")
+             hint="validation on var.authorized_networks; tests/challenge/gke_module.tftest.hcl must pass", level="challenge",
+             test="gke_module.tftest.hcl")
 def validation(plan):
     mods = plan.configuration.get("root_module", {}).get("module_calls", {})
     require(any("authorized_networks" in m.get("module", {}).get("variables", {}) for m in mods.values()),

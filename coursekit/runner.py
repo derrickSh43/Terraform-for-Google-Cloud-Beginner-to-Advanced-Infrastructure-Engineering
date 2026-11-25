@@ -6,6 +6,7 @@ import json
 import re
 import shutil
 import subprocess
+from concurrent.futures import ThreadPoolExecutor
 from dataclasses import dataclass, field
 from pathlib import Path
 
@@ -118,7 +119,51 @@ def _init_hint(output: str) -> str:
     return ""
 
 
-def check(lesson: paths.Lesson, target: Path, *, challenge: bool = False, build_name: str | None = None) -> Report:
+def _test_hint(output: str, dirs: list[Path] | tuple[Path, ...] = ()) -> str:
+    """Explain a failing lesson test. `dirs` hold the configuration the tests run against."""
+    flat = " ".join(output.split())         # Terraform wraps long lines
+    m = re.search(r'managed resource "([\w-]+)" "([\w-]+)" has not been declared', flat)
+    if m:
+        rtype, name = m.groups()
+        code = "\n".join(f.read_text(encoding="utf-8", errors="replace") for d in dirs for f in sorted(d.glob("*.tf")))
+        mine = sorted(set(re.findall(rf'(?m)^resource\s+"{re.escape(rtype)}"\s+"([\w-]+)"', code)))
+        yours = " Yours: " + ", ".join(f'"{n}"' for n in mine) + "." if mine else ""
+        return (
+            f"The test looks for a resource named `{rtype}.{name}`, and your code doesn't have one.{yours}\n"
+            f'Declare it as `resource "{rtype}" "{name}"`, and update everything that refers to the old name.'
+        )
+    extra = set(re.findall(r'does not declare a variable named "([\w-]+)"', flat))      # the test sets these
+    m = re.search(r'has a required variable "([\w-]+)" with no set value', flat)
+    if m:
+        hint = (f'The test doesn\'t set "{m.group(1)}", and it has no default. Give the variable a default,\n'
+                "so callers that don't care about it can leave it out.")
+        if extra:
+            hint += "\nOr is it named differently? The test sets " + ", ".join(f'"{n}"' for n in sorted(extra)) + ", which your code doesn't declare."
+        return hint
+    m = re.search(r"Missing expected failure.*?checkable object, var[.]([\w-]+),", flat)
+    if m and m.group(1) in extra:
+        return f'The test sets a variable named "{m.group(1)}", and your code doesn\'t declare it.'
+    if m:
+        return f"The test passes a bad value to var.{m.group(1)} and your code accepted it. Check the condition in its validation block."
+    return ""
+
+
+def _test_results(output: str) -> dict[str, bool]:
+    """{"name.tftest.hcl": passed} from `terraform test` output."""
+    found = re.findall(r"(?m)^(\S+[.]tftest[.]hcl)[.]{3} (pass|fail|skip|error)\s*$", output)
+    return {re.split(r"[\\/]", path)[-1].removeprefix("lesson_"): result == "pass" for path, result in found}
+
+
+def _apply_tests(outcomes: list[checks.Outcome], results: dict[str, bool]) -> None:
+    """A requirement proven by a lesson test only passes when that test does."""
+    for o in outcomes:
+        if o.req.test and o.passed and not results.get(o.req.test, False):
+            o.passed = False
+            o.message = (f"The lesson test {o.req.test} fails: see the failed tests stage" if o.req.test in results
+                         else f"The lesson test {o.req.test} did not run: see the failed stages, or check the module's folder name")
+
+
+def check(lesson: paths.Lesson, target: Path, *, challenge: bool = False, build_name: str | None = None, jobs: int = 3) -> Report:
     level = "challenge" if challenge else "lab"
     report = Report(lesson.dirname, target, level)
     if not target.is_dir():
@@ -173,48 +218,60 @@ def check(lesson: paths.Lesson, target: Path, *, challenge: bool = False, build_
         return report
 
     source = Source.from_dir(target)
-    plans: dict[str, Plan] = {}
-    for name, rdir in roots.items():
+
+    def one_root(name: str, rdir: str) -> tuple[list[Stage], Plan | None]:
         suffix = f" ({name})" if multi else ""
         cwd = build / rdir
+        stages: list[Stage] = []
 
         # 2. init (uses the Terraform Registry through the shared plugin cache)
         init = tf.run(["init", "-input=false", "-no-color", "-reconfigure"], cwd=cwd)
         if not init.ok:
-            report.stages.append(Stage("init" + suffix, FAIL, "terraform init failed", _with_hint(init.output, _init_hint(init.output))))
-            return report
-        report.stages.append(Stage("init" + suffix, PASS, "providers and modules installed" if multi else "providers installed"))
+            return [Stage("init" + suffix, FAIL, "terraform init failed", _with_hint(init.output, _init_hint(init.output)))], None
+        stages.append(Stage("init" + suffix, PASS, "providers and modules installed" if multi else "providers installed"))
 
-        # 3. validate
-        val = tf.run(["validate", "-json", "-no-color"], cwd=cwd)
-        if not val.ok:
-            report.stages.append(Stage("validate" + suffix, FAIL, "configuration is invalid", _diagnostics(val.stdout) or val.output))
-            return report
-        report.stages.append(Stage("validate" + suffix, PASS, "configuration is valid"))
+        # 3. validate. `plan` validates too, so this only runs when there's something to explain
+        # (the plan failed), or when cloudsim is about to read import blocks.
+        def validate() -> bool:
+            val = tf.run(["validate", "-json", "-no-color"], cwd=cwd)
+            stages.append(Stage("validate" + suffix, PASS, "configuration is valid") if val.ok else
+                          Stage("validate" + suffix, FAIL, "configuration is invalid", _diagnostics(val.stdout) or val.output))
+            return val.ok
 
-        # 4. tflint (optional)
-        if shutil.which("tflint"):
-            lint = subprocess.run(["tflint", "--no-color", f"--chdir={cwd}"], capture_output=True, text=True)
-            status = PASS if lint.returncode == 0 else WARN
-            report.stages.append(Stage("lint" + suffix, status, "tflint clean" if status == PASS else "tflint reported issues", lint.stdout.strip()))
-        elif name == lesson.primary:
-            report.stages.append(Stage("lint", SKIP, "tflint not installed (optional)"))
+        has_imports = any(re.search(r"(?m)^\s*import\s*\{", f.read_text(encoding="utf-8", errors="replace")) for f in cwd.glob("*.tf"))
+        if has_imports and not validate():
+            return stages, None
 
-        # 4b. import blocks: the course plays the cloud's part (see coursekit.cloudsim)
+        # 4. import blocks: the course plays the cloud's part (see coursekit.cloudsim)
         try:
             imported = cloudsim.apply(cwd, cloudsim.load_inventory(lesson.cloud_paths().get(rdir)))
         except cloudsim.ImportFailed as exc:
-            report.stages.append(Stage("plan" + suffix, FAIL, "an import block can't be resolved", str(exc)))
-            return report
+            stages.append(Stage("plan" + suffix, FAIL, "an import block can't be resolved", str(exc)))
+            return stages, None
 
         # 5. plan with a fake token -> plan JSON (against prepared state, if the lesson ships one)
         plan_res = tf.run(["plan", "-input=false", "-refresh=false", "-lock=false", "-no-color", "-out=course.tfplan"], cwd=cwd)
         if not plan_res.ok:
-            report.stages.append(Stage("plan" + suffix, FAIL, "terraform plan failed", _with_hint(plan_res.output, _plan_hint(plan_res.output))))
-            return report
+            if has_imports or validate():
+                stages.append(Stage("plan" + suffix, FAIL, "terraform plan failed", _with_hint(plan_res.output, _plan_hint(plan_res.output))))
+            return stages, None
+        if not has_imports:
+            stages.append(Stage("validate" + suffix, PASS, "configuration is valid"))
+
+        # 5b. tflint (optional)
+        if shutil.which("tflint"):
+            lint = subprocess.run(["tflint", "--no-color", f"--chdir={cwd}"], capture_output=True, text=True)
+            status = PASS if lint.returncode == 0 else WARN
+            stages.append(Stage("lint" + suffix, status, "tflint clean" if status == PASS else "tflint reported issues", lint.stdout.strip()))
+        elif name == lesson.primary:
+            stages.append(Stage("lint", SKIP, "tflint not installed (optional)"))
+
         show = tf.run(["show", "-json", "course.tfplan"], cwd=cwd)
-        plans[name] = Plan(json.loads(show.stdout), name=name, source=source, root=rdir)
-        plans[name].imported = {i.address: i.id for i in imported}
+        if not show.ok:
+            stages.append(Stage("plan" + suffix, FAIL, "terraform could not read the plan", show.output))
+            return stages, None
+        plan = Plan(json.loads(show.stdout), name=name, source=source, root=rdir)
+        plan.imported = {i.address: i.id for i in imported}
         counts = re.search(r"Plan: (\d+) to add, (\d+) to change, (\d+) to destroy", plan_res.stdout)
         if counts:
             summary = counts.group(0)
@@ -226,36 +283,54 @@ def check(lesson: paths.Lesson, target: Path, *, challenge: bool = False, build_
             summary += "  [against deployed state]"
         if imported:
             summary += f"  [{len(imported)} imported (simulated)]"
-        report.stages.append(Stage("plan" + suffix, PASS, summary, plan_res.stdout.strip()))  # full plan shown with -v
+        stages.append(Stage("plan" + suffix, PASS, summary, plan_res.stdout.strip()))  # full plan shown with -v
         (cwd / "plan.json").write_text(show.stdout, encoding="utf-8")
+        return stages, plan
+
+    with ThreadPoolExecutor(max_workers=max(1, jobs)) as pool:
+        results = list(pool.map(lambda r: one_root(*r), roots.items()))
+    plans: dict[str, Plan] = {}
+    for name, (stages, plan) in zip(roots, results):
+        report.stages += stages
+        if plan is None:
+            return report                   # explain one broken root at a time
+        plans[name] = plan
 
     plan = plans[lesson.primary]
     plan.others = {n: p for n, p in plans.items() if n != lesson.primary}
 
-    # 6. terraform native tests (mock providers), if the lesson ships any
-    if tests_dest.is_dir() and any(tests_dest.glob("*.tftest.hcl")):
-        test = tf.run(["test", "-no-color"], cwd=build / primary_dir)
-        summary = next((l for l in test.stdout.splitlines() if "passed" in l and "failed" in l), "")
-        report.stages.append(Stage("tests", PASS if test.ok else FAIL, summary or ("tests passed" if test.ok else "tests failed"), "" if test.ok else test.output))
+    test_results: dict[str, bool] = {}
 
-    # 6b. tests that students wrote for their own modules (modules/<name>/tests/*.tftest.hcl)
-    for tdir in sorted(build.glob("modules/*/tests")):
-        if not any(tdir.glob("*.tftest.hcl")):
-            continue
-        mdir = tdir.parent
-        label = f"tests ({mdir.relative_to(build).as_posix()})"
-        init = tf.run(["init", "-input=false", "-backend=false", "-no-color"], cwd=mdir)
-        if not init.ok:
-            report.stages.append(Stage(label, FAIL, "terraform init failed", init.output))
-            continue
-        test = tf.run(["test", "-no-color"], cwd=mdir)
+    def run_tests(label: str, cwd: Path, dirs: list[Path]) -> Stage:
+        test = tf.run(["test", "-no-color"], cwd=cwd)
+        test_results.update(_test_results(test.output))
         summary = next((l for l in test.stdout.splitlines() if "passed" in l and "failed" in l), "")
-        report.stages.append(Stage(label, PASS if test.ok else FAIL, summary or ("tests passed" if test.ok else "tests failed"),
-                                   "" if test.ok else test.output))
+        return Stage(label, PASS if test.ok else FAIL, summary or ("tests passed" if test.ok else "tests failed"),
+                     "" if test.ok else _with_hint(test.output, _test_hint(test.output, dirs)))
+
+    def primary_tests() -> Stage:
+        modules = {m for f in tests_dest.glob("*.tftest.hcl") for m in re.findall(r"modules/([\w-]+)", f.read_text(encoding="utf-8"))}
+        return run_tests("tests", build / primary_dir, [build / primary_dir, *(build / "modules" / m for m in sorted(modules))])
+
+    def module_tests(mdir: Path) -> Stage:
+        label = f"tests ({mdir.relative_to(build).as_posix()})"
+        lock = mdir / ".terraform.lock.hcl"
+        if not (target / mdir.relative_to(build) / lock.name).exists() and paths.SHARED_LOCK.exists():
+            shutil.copy2(paths.SHARED_LOCK, lock)      # same provider as the roots, from the cache
+        init = tf.run(["init", "-input=false", "-backend=false", "-no-color"], cwd=mdir)
+        return run_tests(label, mdir, [mdir]) if init.ok else Stage(label, FAIL, "terraform init failed", init.output)
+
+    with ThreadPoolExecutor(max_workers=max(1, jobs)) as pool:
+        # 6. terraform native tests (mock providers), if the lesson ships any
+        pending = [pool.submit(primary_tests)] if tests_dest.is_dir() and any(tests_dest.glob("*.tftest.hcl")) else []
+        # 6b. tests inside modules (modules/<name>/tests/*.tftest.hcl): written by the student, or by the lesson
+        pending += [pool.submit(module_tests, d.parent) for d in sorted(build.glob("modules/*/tests")) if any(d.glob("*.tftest.hcl"))]
+        report.stages += [f.result() for f in pending]
 
     # 7. requirement checks
     checks_file = lesson.sub("checks.py")
     if checks_file.exists():
         reqs = checks.load(checks_file)
         report.outcomes = checks.run(reqs, plan, challenge)
+        _apply_tests(report.outcomes, test_results)
     return report

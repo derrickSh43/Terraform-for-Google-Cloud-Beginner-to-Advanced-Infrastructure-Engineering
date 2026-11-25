@@ -11,6 +11,11 @@ python course.py check 11 --challenge
 | C11.3 | Snapshots are regional by default. Store them in the **`us` multi-region** with `snapshot_properties { storage_locations = ["us"] }`, so a disk can be restored in another region. |
 | C11.4 | `vm-service` must reject silly disk sizes: `0` (no disk) or 10–1000 GB. `tests/challenge/vm_service_disk.tftest.hcl` tests the module with no disk, a 20 GB disk and a 5 GB disk. |
 
+## Contract for the lesson test
+
+The test calls the module on its own with the inputs from lesson 06, so every variable you added needs a default. It looks for
+`google_compute_disk.data` and `google_compute_resource_policy.snapshots` (both with `count`).
+
 ## Think about it
 
 - Once prod's retention is locked, what happens if someone sets `backup_retention_days = 7` next year? (Look up "retention policy lock" behaviour.)

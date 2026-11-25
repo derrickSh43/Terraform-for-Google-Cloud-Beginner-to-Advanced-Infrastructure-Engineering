@@ -11,6 +11,11 @@ python course.py check 15 --challenge
 | C15.3 | **Attribute costs.** Enable GKE cost allocation (`cost_management_config`) and keep resource labels on the cluster. |
 | C15.4 | **The module refuses public API access.** Validate `var.authorized_networks`: every entry must be a valid **private** (RFC 1918) CIDR. `tests/challenge/gke_module.tftest.hcl` tries `0.0.0.0/0` and a public office range. Hint: Terraform has no `cidrcontains`, but a regex on the first octets works. |
 
+## Contract for the lesson test
+
+The test calls the module on its own with the lab's eight required inputs, so every other variable needs a default. It looks for
+`google_container_cluster.this`.
+
 ## Think about it
 
 - With Binary Authorization enforced and no policy written yet, what is the project's default policy, and what would happen to deployments?

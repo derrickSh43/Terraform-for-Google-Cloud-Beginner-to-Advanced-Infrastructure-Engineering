@@ -231,7 +231,8 @@ def lb_signal(plan):
 
 @requirement("C9.4", "The MIG module rejects impossible replica bounds",
              hint="validation on max_replicas referencing var.min_replicas; tests/challenge/mig_module.tftest.hcl must pass",
-             level="challenge")
+             level="challenge",
+             test="mig_module.tftest.hcl")
 def bounds_validation(plan):
     mods = plan.configuration.get("root_module", {}).get("module_calls", {})
     require(any("min_replicas" in m.get("module", {}).get("variables", {}) for m in mods.values()),
