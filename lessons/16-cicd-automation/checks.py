@@ -60,6 +60,28 @@ def _member_text(plan, res):
     return ""
 
 
+def _state_access(plan, who: str, read_only: bool) -> None:
+    """In bootstrap: meridian-ci-<who> of each environment can use that environment's state, and no other."""
+    boot = plan.others.get("bootstrap")
+    require(boot is not None, "The bootstrap root wasn't planned")
+    grants = [g for g in iam.grants(boot) if g.scope == "bucket"]
+    for env, p in (("dev", plan), ("prod", plan.others["prod"])):
+        email = f"meridian-ci-{who}@{p.variable_value('project_id')}.iam.gserviceaccount.com"
+        mine = [g for g in grants if email in g.principal]
+        require(mine, f"bootstrap: {email} has no access to the state bucket - terraform init would fail in CI")
+        for g in mine:
+            if read_only:
+                require(READ_ONLY.search(g.role) or g.role == "roles/storage.objectViewer",
+                        f"bootstrap: the {env} plan identity can write state ({g.role}) - use roles/storage.objectViewer")
+            else:
+                require(g.role in ("roles/storage.objectUser", "roles/storage.objectAdmin"),
+                        f"bootstrap: the {env} apply identity has {g.role} on the state bucket - it must write state and the lock file "
+                        "(roles/storage.objectUser)")
+            expr = (g.condition or {}).get("expression") or ""
+            require(f"objects/envs/{env}/" in expr,
+                    f"bootstrap: {email} can reach every environment's state - add an IAM condition limited to envs/{env}/")
+
+
 def _wiu_on(plan, sa):
     return [g for g in iam.grants(plan) if g.scope == "service_account" and g.role == "roles/iam.workloadIdentityUser"
             and g.target is not None and g.target.address == sa.address]
@@ -82,8 +104,9 @@ def oidc(plan):
             "attribute_condition must pin the repository - otherwise any GitHub repository can use this pool")
 
 
-@requirement("R16.2", "Pull-request plans use a read-only identity",
-             hint="meridian-ci-plan: only *viewer / *reader / securityReviewer roles; workloadIdentityUser for principalSet .../attribute.repository/<repo>")
+@requirement("R16.2", "Pull-request plans use a read-only identity that can read its state",
+             hint="meridian-ci-plan: only *viewer / *reader / securityReviewer roles; workloadIdentityUser for principalSet .../attribute.repository/<repo>; "
+                  "in bootstrap, roles/storage.objectViewer on the state bucket with a condition on envs/<env>/")
 def plan_identity(plan):
     sa = _sa(plan, "meridian-ci-plan")
     roles = sorted(g.role for g in iam.for_principal(iam.grants(plan), f"sa:{sa.address}", "project"))
@@ -95,17 +118,30 @@ def plan_identity(plan):
     texts = [_member_text(plan, g.source) for g in wiu]
     require(all("attribute.repository/" in t for t in texts), f"Bind the plan identity to the repository principalSet, found {texts}")
     require(not plan.resources("google_service_account_key"), "No service account keys")
+    _state_access(plan, "plan", read_only=True)
 
 
-@requirement("R16.3", "Only workflows on main can act as the apply identity",
-             hint="workloadIdentityUser on meridian-ci for principalSet://iam.googleapis.com/<pool>/attribute.ref/refs/heads/main")
+@requirement("R16.3", "A separate apply identity, usable only from main, can deploy and write its state",
+             hint="meridian-ci-apply with per-service admin roles (not owner/editor), workloadIdentityUser for "
+                  "principalSet://iam.googleapis.com/<pool>/attribute.ref/refs/heads/main; in bootstrap, "
+                  "roles/storage.objectUser on the state bucket with a condition on envs/<env>/")
 def apply_identity(plan):
-    sa = _sa(plan, "meridian-ci")
+    sa = _sa(plan, "meridian-ci-apply")
+    roles = sorted(g.role for g in iam.for_principal(iam.grants(plan), f"sa:{sa.address}", "project"))
+    basic = [r for r in roles if r in iam.BASIC_ROLES]
+    require(not basic, f"The apply identity has {basic}: grant one admin role per service instead")
+    require(any(not READ_ONLY.search(r) for r in roles),
+            f"The apply identity has {roles or 'no roles'} - it can't create or change anything")
     wiu = _wiu_on(plan, sa)
-    require(wiu, "GitHub can't act as meridian-ci - the apply job would have no identity")
+    require(wiu, "GitHub can't act as meridian-ci-apply - the apply job would have no identity")
     texts = [_member_text(plan, g.source) for g in wiu]
     require(all("attribute.ref/refs/heads/main" in t for t in texts),
-            f"meridian-ci must be restricted to refs/heads/main, found {texts} - any branch or PR could apply")
+            f"meridian-ci-apply must be restricted to refs/heads/main, found {texts} - any branch or PR could apply")
+    rollout = [x for x in plan.resources("google_service_account") if x.get("account_id") == "meridian-ci"]
+    require(not (rollout and _wiu_on(plan, rollout[0])),
+            "GitHub can act as meridian-ci: its custom role only rolls the web MIG, so it can't apply this platform. "
+            "Bind meridian-ci-apply instead")
+    _state_access(plan, "apply", read_only=False)
 
 
 @requirement("R16.4", "The pipeline runs on pull requests and on pushes to main",

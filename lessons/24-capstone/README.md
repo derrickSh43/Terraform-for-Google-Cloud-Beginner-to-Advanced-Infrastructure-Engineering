@@ -47,7 +47,10 @@ exactly the kind of regression a baseline suite exists to catch.
 
 A matrix keeps it short (`root: [dev, prod, hub, platform]`, `terraform -chdir=envs/${{ matrix.root }}`).
 `needs:` orders the applies. GitHub environments hold the approval rules. The read-only plan
-identity and the apply identity stay separate. Lesson 16's checks still run (one workflow file,
+identity and the apply identity stay separate. Lesson 16's `meridian-ci-apply` only holds roles in its
+own project, and bootstrap only lets it reach `envs/dev/` or `envs/prod/` state. A real pipeline for
+`hub` and `platform` needs its own apply identity (and state grant) per root: folder and organization
+roles for `platform`. Use the environment's variables to give each job the right one. Lesson 16's checks still run (one workflow file,
 read-only token, static checks without credentials). R24.5 takes over its single-root apply rules.
 
 ### Documentation that can be checked

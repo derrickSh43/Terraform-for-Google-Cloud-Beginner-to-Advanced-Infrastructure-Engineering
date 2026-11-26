@@ -162,5 +162,19 @@ def custom_role_permissions(plan: Plan, grant: Grant) -> list[str] | None:
     return list(role_res.get("permissions") or [])
 
 
+# Lesson 16's Terraform apply identity. It creates service accounts, keys and IAM grants, so it
+# needs project-wide admin roles that would be findings for anyone else. What protects it is that
+# only workflows on main can use it, behind an environment with reviewers.
+DEPLOYER_ACCOUNT_ID = "meridian-ci-apply"
+
+
+def is_deployer(plan: Plan, grant: Grant) -> bool:
+    """True for grants to the Terraform apply identity (meridian-ci-apply)."""
+    if grant.principal.startswith("sa:"):
+        sa = plan.resource(grant.principal[3:])
+        return sa is not None and sa.get("account_id") == DEPLOYER_ACCOUNT_ID
+    return grant.principal.startswith(f"serviceAccount:{DEPLOYER_ACCOUNT_ID}@")
+
+
 def for_principal(all_grants: list[Grant], principal: str, scope: str | None = None) -> list[Grant]:
     return [g for g in all_grants if g.principal == principal and (scope is None or g.scope == scope)]

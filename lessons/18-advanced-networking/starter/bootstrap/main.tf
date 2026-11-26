@@ -38,3 +38,40 @@ resource "google_storage_bucket" "tfstate" {
     prevent_destroy = true
   }
 }
+
+# --- Who may use which state (lesson 16) --------------------------------------
+# Each environment's CI identities live in that environment's project. The plan identity
+# may read its environment's state; the apply identity may also write it (state and lock
+# file). The condition keeps dev's identities out of prod's state and the other way round.
+# Allowing the bucket itself (resource.type) lets them list object names, which the gcs
+# backend needs; reading or writing an object still requires the envs/<env>/ prefix.
+locals {
+  state_access = merge([
+    for env, project in var.ci_projects : {
+      "${env}-plan" = {
+        env    = env
+        role   = "roles/storage.objectViewer"
+        member = "serviceAccount:meridian-ci-plan@${project}.iam.gserviceaccount.com"
+      }
+      "${env}-apply" = {
+        env    = env
+        role   = "roles/storage.objectUser"
+        member = "serviceAccount:meridian-ci-apply@${project}.iam.gserviceaccount.com"
+      }
+    }
+  ]...)
+}
+
+resource "google_storage_bucket_iam_member" "ci_state" {
+  for_each = local.state_access
+
+  bucket = google_storage_bucket.tfstate.name
+  role   = each.value.role
+  member = each.value.member
+
+  condition {
+    title       = "${each.key}-state-only"
+    description = "Only the envs/${each.value.env}/ state prefix."
+    expression  = "resource.type == \"storage.googleapis.com/Bucket\" || resource.name.startsWith(\"projects/_/buckets/${google_storage_bucket.tfstate.name}/objects/envs/${each.value.env}/\")"
+  }
+}

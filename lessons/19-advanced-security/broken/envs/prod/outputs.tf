@@ -102,3 +102,8 @@ output "github_plan_service_account" {
   description = "Set as PLAN_SERVICE_ACCOUNT in GitHub."
   value       = module.github.plan_service_account_email
 }
+
+output "github_apply_service_account" {
+  description = "Set as the APPLY_SERVICE_ACCOUNT variable in GitHub."
+  value       = module.github.apply_service_account_email
+}

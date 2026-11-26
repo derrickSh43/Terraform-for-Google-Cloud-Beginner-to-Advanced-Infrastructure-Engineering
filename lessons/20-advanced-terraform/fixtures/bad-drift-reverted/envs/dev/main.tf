@@ -285,9 +285,8 @@ module "batch_cluster" {
 module "github" {
   source = "../../modules/github-oidc"
 
-  project_id                  = var.project_id
-  repository                  = var.github_repository
-  apply_service_account_email = module.ci.email
+  project_id = var.project_id
+  repository = var.github_repository
 }
 
 module "observability" {
@@ -349,6 +348,6 @@ module "reporting" {
   retention_days = 90
 
   labels = {
-    team          = "reporting"
+    team = "reporting"
   }
 }

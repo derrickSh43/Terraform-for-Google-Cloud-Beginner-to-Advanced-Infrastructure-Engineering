@@ -53,6 +53,23 @@ class Grants(unittest.TestCase):
         self.assertEqual(g.scope, "service_account")
         self.assertEqual(g.target.address, "google_service_account.ci")
 
+    def test_only_the_apply_identity_is_the_deployer(self):
+        plan = build(
+            _res("google_service_account.apply", "google_service_account",
+                 {"account_id": "meridian-ci-apply", "email": "meridian-ci-apply@p.iam.gserviceaccount.com"}),
+            _res("google_project_iam_member.a", "google_project_iam_member",
+                 {"role": "roles/cloudkms.admin", "member": "serviceAccount:meridian-ci-apply@p.iam.gserviceaccount.com"}),
+            _res("google_project_iam_member.b", "google_project_iam_member",
+                 {"role": "roles/cloudkms.admin", "member": "serviceAccount:ci@p.iam.gserviceaccount.com"}),
+            _res("google_project_iam_member.c", "google_project_iam_member",
+                 {"role": "roles/cloudkms.admin", "member": "serviceAccount:meridian-ci-apply@other.iam.gserviceaccount.com"}),
+            _res("google_project_iam_member.d", "google_project_iam_member",
+                 {"role": "roles/cloudkms.admin", "member": "user:meridian-ci-apply@example.com"}),
+        )
+        deployer = {g.source.address: iam.is_deployer(plan, g) for g in iam.grants(plan)}
+        self.assertEqual(deployer, {"google_project_iam_member.a": True, "google_project_iam_member.b": False,
+                                    "google_project_iam_member.c": True, "google_project_iam_member.d": False})
+
 
 if __name__ == "__main__":
     unittest.main()

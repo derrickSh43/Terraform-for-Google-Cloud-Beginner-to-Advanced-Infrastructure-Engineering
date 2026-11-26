@@ -94,7 +94,9 @@ def ci_bucket_access(plan):
 def impersonation(plan):
     ci = _ci(plan)
     all_grants = iam.grants(plan)
-    project_wide = [f"{g.principal} has {g.role}" for g in all_grants if g.scope == "project" and g.role in IMPERSONATION_ROLES]
+    # The Terraform apply identity (lesson 16) attaches service accounts to what it creates: it's the exception.
+    project_wide = [f"{g.principal} has {g.role}" for g in all_grants
+                    if g.scope == "project" and g.role in IMPERSONATION_ROLES and not iam.is_deployer(plan, g)]
     require(not project_wide, "Project-level impersonation roles let principals act as EVERY service account "
                               "(including meridian-web and meridian-app):\n  " + "\n  ".join(project_wide))
     on_ci = [g for g in all_grants if g.scope == "service_account" and g.target is not None and g.target.address == ci.address

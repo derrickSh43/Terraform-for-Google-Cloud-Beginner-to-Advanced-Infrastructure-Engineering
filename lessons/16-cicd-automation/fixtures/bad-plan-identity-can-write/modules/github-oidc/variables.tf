@@ -14,11 +14,6 @@ variable "pool_id" {
   default     = "meridian-github"
 }
 
-variable "apply_service_account_email" {
-  description = "Service account that applies changes (the lesson 10 CI identity)."
-  type        = string
-}
-
 variable "plan_roles" {
   description = "Read-only roles for the plan identity."
   type        = list(string)
@@ -34,4 +29,36 @@ variable "plan_roles" {
     "roles/artifactregistry.reader",
     "roles/compute.instanceAdmin.v1",
   ]
+}
+
+variable "apply_roles" {
+  description = "Roles the apply identity needs to manage this platform: one admin role per service, never Owner or Editor."
+  type        = list(string)
+  default = [
+    "roles/compute.admin",
+    "roles/storage.admin",
+    "roles/iam.serviceAccountAdmin",
+    "roles/iam.serviceAccountUser",
+    "roles/iam.roleAdmin",
+    "roles/iam.workloadIdentityPoolAdmin",
+    "roles/resourcemanager.projectIamAdmin",
+    "roles/serviceusage.serviceUsageAdmin",
+    "roles/servicenetworking.networksAdmin",
+    "roles/cloudsql.admin",
+    "roles/secretmanager.admin",
+    "roles/run.admin",
+    "roles/pubsub.admin",
+    "roles/cloudscheduler.admin",
+    "roles/container.admin",
+    "roles/artifactregistry.admin",
+    "roles/monitoring.admin",
+    "roles/logging.admin",
+    "roles/cloudkms.admin",
+    "roles/dns.admin",
+  ]
+
+  validation {
+    condition     = length(setintersection(var.apply_roles, ["roles/owner", "roles/editor"])) == 0
+    error_message = "Grant the apply identity specific admin roles, not roles/owner or roles/editor."
+  }
 }

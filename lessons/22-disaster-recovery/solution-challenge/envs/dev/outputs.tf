@@ -103,6 +103,11 @@ output "github_plan_service_account" {
   value       = module.github.plan_service_account_email
 }
 
+output "github_apply_service_account" {
+  description = "Set as the APPLY_SERVICE_ACCOUNT variable in GitHub."
+  value       = module.github.apply_service_account_email
+}
+
 output "failover_commands" {
   description = "What to run if the primary region is lost (see the DR runbook)."
   value = var.dr_region == null ? [] : [

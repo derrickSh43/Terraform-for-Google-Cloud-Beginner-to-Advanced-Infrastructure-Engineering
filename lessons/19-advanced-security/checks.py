@@ -78,7 +78,9 @@ def key_access(plan):
             "The Cloud Storage service agent can't use the key - every write to a CMEK bucket would fail")
     others = [g.principal for g in users if not STORAGE_AGENT.match(g.principal)]
     require(not others, f"Other principals can use the key: {others}")
-    project = [f"{g.principal} {g.role}" for g in grants if g.scope == "project" and g.role.startswith("roles/cloudkms.")]
+    # The Terraform apply identity (lesson 16) creates and rotates keys: it's the exception. It can't use them.
+    project = [f"{g.principal} {g.role}" for g in grants
+               if g.scope == "project" and g.role.startswith("roles/cloudkms.") and not iam.is_deployer(plan, g)]
     require(not project, f"Project-level KMS roles reach every key: {project}")
 
 

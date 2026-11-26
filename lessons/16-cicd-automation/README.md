@@ -29,8 +29,38 @@ merge to main ─► checks ─► apply dev            ── apply identity, e
 | Stage | Needs Google credentials? | Identity |
 |---|---|---|
 | `terraform fmt -check`, `init -backend=false`, `validate`, `test` | **No** | none |
-| `terraform plan` | Read access + state | `meridian-ci-plan` (viewer roles) |
-| `terraform apply` | Write access | `meridian-ci` (lesson 10's custom role) |
+| `terraform plan` | Read access + read its own state | `meridian-ci-plan` (viewer roles) |
+| `terraform apply` | Write access + read/write its own state | `meridian-ci-apply` (one admin role per service) |
+
+Why not lesson 10's `meridian-ci`? Its custom role can roll the web MIG to a new template, and nothing
+else. `terraform apply` creates networks, databases, service accounts and IAM grants, so a
+Terraform apply identity needs much more. Keep both: `meridian-ci` for narrow, frequent app
+rollouts, `meridian-ci-apply` for infrastructure changes, which are rarer and reviewed.
+
+The apply identity is powerful: with `resourcemanager.projectIamAdmin` it can grant itself anything.
+That's normal for an infrastructure pipeline, which is why only `main` can use it, behind an
+environment with reviewers. Owner or Editor would add nothing it needs and remove every audit
+boundary, so the module refuses them.
+
+Earlier lessons' checks flag project-wide impersonation (lesson 10) and project-wide KMS roles
+(lesson 19). From now on they make one exception: `meridian-ci-apply`, because it attaches service accounts
+to what it creates and manages the keys. Any other principal with those roles is still a finding.
+
+### State access
+
+The state lives in the bootstrap project's bucket (lesson 06), so neither identity can even
+`terraform init` without a grant there. Grant it per environment, with an IAM condition on the
+object prefix: dev's identities must not read prod's state, which holds prod's secrets.
+
+```hcl
+condition {
+  title      = "dev-plan-state-only"
+  expression = "resource.type == \"storage.googleapis.com/Bucket\" || resource.name.startsWith(\"projects/_/buckets/<bucket>/objects/envs/dev/\")"
+}
+```
+
+The plan identity gets `roles/storage.objectViewer` (enough with `-lock=false`). The apply identity gets
+`roles/storage.objectUser`: it writes the state and the `.tflock` file next to it.
 
 ### Keyless authentication
 
@@ -78,7 +108,7 @@ apply:
 ```
 
 Without the `if:`, every pull request applies its unreviewed code to dev. That's the broken repo.
-The branch-scoped IAM binding is the second line of defence: the run would fail to authenticate as `meridian-ci`.
+The branch-scoped IAM binding is the second line of defence: the run would fail to authenticate as `meridian-ci-apply`.
 
 ### Testing your own modules
 
@@ -114,7 +144,7 @@ flowchart LR
   P -->|"OIDC token<br/>repo claim"| WIF["Workload Identity Federation<br/>pool: meridian-github"]
   A -->|"OIDC token<br/>ref = refs/heads/main"| WIF
   WIF -->|"principalSet …/attribute.repository/…"| PSA["meridian-ci-plan<br/>viewer roles"]
-  WIF -->|"principalSet …/attribute.ref/refs/heads/main"| ASA["meridian-ci<br/>custom deployer role"]
+  WIF -->|"principalSet …/attribute.ref/refs/heads/main"| ASA["meridian-ci-apply<br/>per-service admin roles"]
 ```
 
 ## 4. Lab files
@@ -127,6 +157,6 @@ flowchart LR
 
 GitHub Actions minutes are free for public repositories and included for private ones
 up to a quota. Workload Identity Federation is free. After applying, copy the outputs
-`github_workload_identity_provider` and `github_plan_service_account` into the
+`github_workload_identity_provider`, `github_plan_service_account` and `github_apply_service_account` into the
 repository's Actions variables (`WIF_PROVIDER`, `PLAN_SERVICE_ACCOUNT`, `APPLY_SERVICE_ACCOUNT`),
 and add required reviewers to the `dev` environment.

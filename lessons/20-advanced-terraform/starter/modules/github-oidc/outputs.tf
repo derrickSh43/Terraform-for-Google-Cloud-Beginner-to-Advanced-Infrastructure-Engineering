@@ -7,3 +7,8 @@ output "plan_service_account_email" {
   description = "Read-only identity used by pull-request plans."
   value       = google_service_account.plan.email
 }
+
+output "apply_service_account_email" {
+  description = "Identity that applies changes from main."
+  value       = google_service_account.apply.email
+}

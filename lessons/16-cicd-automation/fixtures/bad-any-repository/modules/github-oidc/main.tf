@@ -1,7 +1,10 @@
 # Keyless CI: GitHub Actions exchanges its own OIDC token for a short-lived
-# Google token. Two identities with different power:
-#   * plan  (read-only)  - any branch / pull request of the repository
-#   * apply (meridian-ci) - only workflows running on refs/heads/main
+# Google token. Two Terraform identities with different power:
+#   * plan  (meridian-ci-plan, read-only)  - any branch / pull request of the repository
+#   * apply (meridian-ci-apply, deploys)   - only workflows running on refs/heads/main
+# Lesson 10's meridian-ci keeps its narrow custom role for rolling the web MIG. It isn't a
+# Terraform identity: applying this platform needs far more than that role allows.
+# Access to the Terraform state itself is granted where the bucket lives (bootstrap).
 
 resource "google_iam_workload_identity_pool" "github" {
   workload_identity_pool_id = var.pool_id
@@ -45,9 +48,22 @@ resource "google_service_account_iam_member" "plan_from_repository" {
   member             = "principalSet://iam.googleapis.com/${google_iam_workload_identity_pool.github.name}/attribute.repository/${var.repository}"
 }
 
-# --- Apply identity: only from main -------------------------------------------
+# --- Apply identity: changes infrastructure, only from main -------------------
+resource "google_service_account" "apply" {
+  account_id   = "meridian-ci-apply"
+  display_name = "CI apply (Terraform, main only)"
+}
+
+resource "google_project_iam_member" "apply" {
+  for_each = toset(var.apply_roles)
+
+  project = var.project_id
+  role    = each.value
+  member  = "serviceAccount:${google_service_account.apply.email}"
+}
+
 resource "google_service_account_iam_member" "apply_from_main" {
-  service_account_id = "projects/${var.project_id}/serviceAccounts/${var.apply_service_account_email}"
+  service_account_id = google_service_account.apply.name
   role               = "roles/iam.workloadIdentityUser"
   member             = "principalSet://iam.googleapis.com/${google_iam_workload_identity_pool.github.name}/attribute.ref/refs/heads/main"
 }
