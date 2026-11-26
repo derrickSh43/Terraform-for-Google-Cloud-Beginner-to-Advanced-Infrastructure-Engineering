@@ -103,6 +103,63 @@ async function runUpdate() {
   } catch (e) { alert(e.message); b.disabled = false; checkUpdate(false); }
 }
 
+// ------------------------------------------------------------------ ⋮ menu
+function openMenu(open) {
+  const m = $("#more-menu");
+  m.hidden = !open;
+  if (!open) return;
+  const item = (k) => m.querySelector(`[data-menu="${k}"]`);
+  const started = !!S.lesson?.started;
+  item("start-over").disabled = !started;
+  item("start-over").textContent = S.lesson ? `Start lesson ${S.lesson.id} over…` : "Start this lesson over…";
+  item("restore-broken").hidden = !(S.lesson?.steps.includes("broken") && (S.target === "broken" || prog().broken));
+  item("update").hidden = !S.update;
+  item("save").disabled = !S.dirty.size;
+}
+
+async function menuAction(k) {
+  openMenu(false);
+  if (k === "lessons") $("#drawer").hidden = false;
+  else if (k === "save") saveAll();
+  else if (k === "start-over") startOver();
+  else if (k === "restore-broken") { if (S.target !== "broken") await viewStage("broken"); resetBroken(); }
+  else if (k === "update") runUpdate();
+  else if (k === "clean") cleanBuilds();
+  else if (k === "stop") stopApp();
+}
+
+async function startOver() {
+  if (S.checking) { toast("A check is running. Try again when it has finished."); return; }
+  const L = S.lesson;
+  if (!confirm(`Start lesson ${L.id} over?\n\nYou get fresh starter files and the lesson's progress is cleared. ` +
+               `Your current files are moved to workspace/.backups, not deleted.`)) return;
+  try {
+    S.dirty.clear();                                        // discard unsaved edits: the old files are being backed up
+    const r = await api("/api/reset", { id: L.id, target: "workspace" });
+    await openLesson(L.id);
+    toast(r.backup ? `Started over. Your old files are in ${r.backup}` : "Started over.", "ok");
+  } catch (e) { toast(e.message, "bad"); }
+}
+
+async function cleanBuilds() {
+  if (S.checking) { toast("A check is running. Try again when it has finished."); return; }
+  if (!confirm("Delete the generated build folders in .course/build?\n\nYour work, progress and the downloaded providers are kept. The next check of each lesson is a little slower.")) return;
+  toast("Freeing disk space… this can take a minute.");
+  try { await api("/api/clean", {}); toast("Disk space freed.", "ok"); } catch (e) { toast(e.message, "bad"); }
+}
+
+async function stopApp() {
+  try {
+    if (S.dirty.size) await saveAll();
+    await api("/api/stop", {});
+  } catch (e) { toast(e.message, "bad"); return; }
+  const d = document.createElement("div");
+  d.id = "stopped";
+  d.innerHTML = "<div><b>✓ Saved. The course app has stopped.</b><br>Your files and progress are kept, and next time it opens where you left off.<br>" +
+    "You can close this tab. To come back, run <code>python course.py</code> in the course folder.</div>";
+  document.body.appendChild(d);
+}
+
 // ------------------------------------------------------------------ header + drawer
 function renderStages() {
   const stages = ["learn", ...S.lesson.steps, "done"];
@@ -472,6 +529,7 @@ async function switchTarget(target, force = false) {
   if (!S.lesson.started && target === "workspace") { S.files = []; renderFiles(); showEmpty(true); return; }
   S.files = (await api(`/api/files?id=${S.lesson.id}&target=${target}`)).files;
   renderFiles();
+  setSaveState("saved");
   if (S.files.length) await openFile(S.files.find((f) => f === "main.tf") || S.files[0]); else showEmpty(true);
 }
 
@@ -514,17 +572,48 @@ async function openFile(path) {
   renderFiles();
 }
 
-function markDirty(path) { if (!S.dirty.has(path)) { S.dirty.add(path); renderFiles(); } }
+// Files save themselves shortly after you stop typing; the label next to Save says where things stand.
+const AUTOSAVE_MS = 1200;
+let autosaveTimer;
+
+function setSaveState(state) {
+  const el = $("#save-state");
+  if (!el) return;
+  el.textContent = { saving: "Saving…", saved: "✓ All changes saved", unsaved: "Unsaved changes", error: "⚠ Not saved" }[state] || "";
+  el.className = `save-state ${state}`;
+}
+
+function markDirty(path) {
+  if (!S.dirty.has(path)) { S.dirty.add(path); renderFiles(); }
+  setSaveState("unsaved");
+  clearTimeout(autosaveTimer);
+  autosaveTimer = setTimeout(() => saveAll().catch(() => {}), AUTOSAVE_MS);
+}
 
 async function saveFile(path) {
   const m = S.models[path];
+  if (!m) { S.dirty.delete(path); return; }
   const text = S.monaco ? m.getValue() : m.text;
   await api("/api/file", { id: S.lesson.id, target: S.target, path, text });
-  S.dirty.delete(path);
+  if ((S.monaco ? m.getValue() : m.text) === text) S.dirty.delete(path);     // typed while saving: stays dirty
 }
 
-async function saveCurrent() { if (S.open) { await saveFile(S.open); renderFiles(); toast(`Saved ${S.open}`, "ok"); } }
-async function saveAll() { for (const p of [...S.dirty]) await saveFile(p); renderFiles(); }
+let saving = Promise.resolve();
+function saveAll() {                                       // one save at a time, in order
+  clearTimeout(autosaveTimer);
+  saving = saving.catch(() => {}).then(async () => {
+    if (!S.dirty.size) { if (S.lesson?.started) setSaveState("saved"); return; }
+    setSaveState("saving");
+    try {
+      for (const p of [...S.dirty]) await saveFile(p);
+      setSaveState(S.dirty.size ? "unsaved" : "saved");
+    } catch (e) { setSaveState("error"); toast(`Couldn't save: ${e.message}`, "bad"); throw e; }
+    finally { renderFiles(); }
+  });
+  return saving;
+}
+
+async function saveCurrent() { await saveAll(); }
 
 async function formatFiles() {
   await saveAll();
@@ -553,6 +642,11 @@ async function newFile() {
 // ------------------------------------------------------------------ wiring
 function wire() {
   $("#menu-btn").onclick = () => ($("#drawer").hidden = !$("#drawer").hidden);
+  $("#btn-quit").onclick = () => stopApp();
+  $("#more-btn").onclick = (e) => { e.stopPropagation(); openMenu($("#more-menu").hidden); };
+  $("#more-menu").querySelectorAll("button").forEach((b) => b.onclick = () => menuAction(b.dataset.menu));
+  document.addEventListener("click", (e) => { if (!$("#more").contains(e.target)) openMenu(false); });
+  document.addEventListener("keydown", (e) => { if (e.key === "Escape") openMenu(false); });
   $("#drawer-close").onclick = () => ($("#drawer").hidden = true);
   $("#btn-save").onclick = () => saveCurrent();
   $("#btn-fmt").onclick = () => formatFiles();

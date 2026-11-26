@@ -18,6 +18,7 @@ import shutil
 import subprocess
 import sys
 import threading
+import time
 import uuid
 import webbrowser
 from contextlib import redirect_stdout
@@ -31,6 +32,7 @@ from .. import terraform as tf
 from . import markdown, update, vendor
 
 STATIC = Path(__file__).with_name("static")
+BACKUPS = paths.WORKSPACE / ".backups"     # "start over" moves old work here instead of deleting it
 EDITABLE = (".tf", ".tfvars", ".tftpl", ".tpl", ".sh", ".yml", ".yaml", ".md", ".hcl", ".json", ".txt", ".ps1")
 SKIP_PARTS = {".terraform", "state", "__pycache__", ".git"}
 MIME = {".html": "text/html", ".js": "text/javascript", ".css": "text/css", ".json": "application/json",
@@ -179,6 +181,39 @@ def reset(l: paths.Lesson, which: str) -> dict:
     return start(l, False)
 
 
+def start_over(l: paths.Lesson) -> dict:
+    """Fresh starter files and no progress for one lesson. The old files are moved to a backup, never deleted."""
+    if not _check_lock.acquire(blocking=False):
+        raise ApiError(409, "a check is running - try again when it has finished")
+    try:
+        dest = BACKUPS / f"{l.dirname}-{time.strftime('%Y%m%d-%H%M%S')}"
+        moved = []
+        for src in (l.workspace, _target(l, "broken")):
+            if src.exists():
+                dest.mkdir(parents=True, exist_ok=True)
+                shutil.move(str(src), str(dest / src.name))
+                moved.append(src.name)
+        prog = guide.load_progress()
+        prog.get("lessons", {}).pop(l.id, None)
+        guide.save_progress(prog)
+        result = start(l, False)
+    finally:
+        _check_lock.release()
+    backup = dest.relative_to(paths.ROOT).as_posix() if moved else None
+    return {**result, "backup": backup}
+
+
+def clean_builds() -> dict:
+    """Delete generated build folders (never the provider cache, your work or progress)."""
+    if not _check_lock.acquire(blocking=False):
+        raise ApiError(409, "a check is running - try again when it has finished")
+    try:
+        shutil.rmtree(paths.BUILD, ignore_errors=True)    # Python 3.8+ removes junctions without following them
+    finally:
+        _check_lock.release()
+    return {"ok": True}
+
+
 def set_progress(l: paths.Lesson, body: dict) -> dict:
     prog = guide.load_progress()
     st = prog.setdefault("lessons", {}).setdefault(l.id, {})
@@ -253,6 +288,12 @@ class Handler(BaseHTTPRequestHandler):
             route = (method, url.path)
             if route == ("GET", "/api/course"):
                 return self._json(course_json())
+            if route == ("POST", "/api/clean"):
+                return self._json(clean_builds())
+            if route == ("POST", "/api/stop"):
+                self._json({"ok": True})
+                threading.Thread(target=self.server.shutdown, daemon=True).start()
+                return None
             if route == ("GET", "/api/update"):
                 return self._json(update.status())
             if route == ("POST", "/api/update"):
@@ -283,7 +324,7 @@ class Handler(BaseHTTPRequestHandler):
             if route == ("POST", "/api/start"):
                 return self._json(start_broken(l) if which == "broken" else start(l, bool(body.get("from_mine"))))
             if route == ("POST", "/api/reset"):
-                return self._json(reset(l, which))
+                return self._json(start_over(l) if which == "workspace" else reset(l, which))
             if route == ("POST", "/api/check"):
                 return self._json(run_check(l, which, bool(body.get("challenge"))))
             if route == ("POST", "/api/fmt"):
@@ -307,16 +348,18 @@ def serve(port: int = 8024, open_browser: bool = True, lesson: str | None = None
         httpd = ThreadingHTTPServer(("127.0.0.1", 0), Handler)     # port busy: pick a free one
     url = f"http://127.0.0.1:{httpd.server_address[1]}/" + (f"?lesson={_lesson(lesson).id}" if lesson else "")
     print(f"Course app running at {url}")
-    print("Keep this window open while you work. Press Ctrl+C here to stop.")
+    print("Keep this window open while you work. Files save automatically and progress is saved as you go.")
+    print("To quit: click 'Save & quit' in the app, or press Ctrl+C here.")
     if open_browser:
         threading.Timer(0.5, lambda: webbrowser.open(url)).start()
     try:
         httpd.serve_forever()
     except KeyboardInterrupt:
-        print("\nStopped. Your work and progress are saved.")
+        pass
     finally:
         httpd.server_close()
     if not _restart.is_set():
+        print("\nStopped. Your work and progress are saved. Start again with: python course.py")
         return 0
     print("Updated. Restarting the course app...")
     cmd = [sys.executable, str(paths.ROOT / "course.py"), "app", "--port", str(httpd.server_address[1]), "--no-browser"]

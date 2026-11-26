@@ -26,7 +26,8 @@ python course.py setup        # once: checks tools, downloads providers and the 
 python course.py              # opens the course app in your browser
 ```
 
-**The course app** puts everything in one window, so you don't need a separate editor or terminal:
+**The course app** puts everything in one window, so you don't need a separate editor or terminal.
+Your files save automatically, and progress is saved as you go. To stop, click **Save & quit** (top right).
 
 | Left | Right |
 |---|---|
@@ -59,17 +60,17 @@ Terraform, Python and tflint are preinstalled. See [docs/SETUP.md](docs/SETUP.md
 | I want to... | Do this |
 |---|---|
 | Start where I left off | `python course.py`. The app opens at your current lesson and task. |
-| Open a specific lesson | ☰ (top left) and pick it, or start the app with `python course.py 05` |
-| Save my files | **Save** or Ctrl+S. **▶ Check** saves everything first. |
-| Stop for the day | Save, then press Ctrl+C in the terminal running the app, and close the tab. Your files are in `workspace/`, and your progress is saved as tasks pass or you move between them. If you close the tab with unsaved changes, the browser asks first. |
-| Start a lesson over | Stop the app, then `python course.py start 03 --force`. This replaces `workspace/03-...` with a fresh starter, and **deletes your work in that lesson**. Copy the folder first if you want to keep it. |
-| Restore a troubleshooting exercise | **Restore the broken files** in the Troubleshoot step |
+| Open a specific lesson | ☰ (top left) or ⋮ → **All lessons…**, or start the app with `python course.py 05` |
+| Save my files | Nothing to do: files save themselves a moment after you stop typing. The label next to **Save** shows **✓ All changes saved**. |
+| Stop for the day | **Save & quit** (top right). It saves your files and stops the app; close the tab. Next time `python course.py` opens where you left off. (Ctrl+C in the app's terminal does the same.) |
+| Start a lesson over | ⋮ (top right) → **Start lesson 03 over…** Fresh starter files, and the lesson's progress is cleared. Your old files are moved to `workspace/.backups/`, not deleted. |
+| Restore a troubleshooting exercise | **Restore the broken files** in the Troubleshoot step, or ⋮ → **Restore the troubleshooting files…** |
 | Skip a task or step | **Skip task**, or **Skip the lab** on the last task. Go back any time from the bar at the top. |
 | Carry my own code into the next lesson | On the new lesson's first page, **Start, continuing from my lesson 03 work** (or `python course.py start 04 --from-mine`) |
 | See every lesson and my progress | `python course.py list` |
 | Check without the app | `python course.py check 03` (add `--challenge`, or `-v` for the full plan) |
 | Look at the reference answer | `python course.py solution 03` |
-| Free disk space | Stop the app, then `python course.py clean`. This deletes only generated build folders. |
+| Free disk space | ⋮ → **Free disk space…** (or `python course.py clean`). Deletes only generated build folders. |
 
 The app runs one copy at a time on port 8024. If you start a second one, it picks another port, so
 close the old tab to avoid editing in two places.

@@ -113,6 +113,42 @@ class UpdateTest(unittest.TestCase):
             server.run_update()
 
 
+class StartOverTest(unittest.TestCase):
+    def setUp(self):
+        paths.STATE_DIR.mkdir(exist_ok=True)
+        tmp = tempfile.TemporaryDirectory(dir=paths.STATE_DIR)       # inside the repo, like the real workspace/
+        self.addCleanup(tmp.cleanup)
+        ws = Path(tmp.name) / "workspace"
+        ws.mkdir()
+        for p in (mock.patch.object(paths, "WORKSPACE", ws), mock.patch.object(server, "BACKUPS", ws / ".backups"),
+                  mock.patch.object(server.guide, "PROGRESS", ws / ".progress.json")):
+            p.start()
+            self.addCleanup(p.stop)
+        self.ws = ws
+
+    def test_backs_up_resets_and_clears_progress(self):
+        l = server._lesson("03")
+        with mock.patch.object(type(l), "workspace", property(lambda s: self.ws / s.dirname)):
+            server.start(l, False)
+            (l.workspace / "compute.tf").write_text("my work")
+            server.set_progress(l, {"lab": "passed", "lab_task": 3})
+            server.set_progress(server._lesson("02"), {"lab": "passed"})
+            r = server.start_over(l)
+            self.assertTrue(r["ok"])
+            backup = self.ws / ".backups" / Path(r["backup"]).name / l.dirname
+            self.assertEqual((backup / "compute.tf").read_text(), "my work")
+            self.assertNotEqual((l.workspace / "compute.tf").read_text(), "my work")
+            lessons = server.guide.load_progress()["lessons"]
+            self.assertNotIn("03", lessons)
+            self.assertEqual(lessons["02"], {"lab": "passed"})
+
+    def test_waits_for_a_running_check(self):
+        with server._check_lock, self.assertRaises(server.ApiError):
+            server.start_over(server._lesson("03"))
+        with server._check_lock, self.assertRaises(server.ApiError):
+            server.clean_builds()
+
+
 class ServerHelpersTest(unittest.TestCase):
     def test_safe_paths(self):
         with tempfile.TemporaryDirectory() as d:
