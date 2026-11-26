@@ -43,6 +43,11 @@ class InitHintTest(unittest.TestCase):
         self.assertIn('"hashicorp/google"', hint)
         self.assertNotIn("internet", hint)
 
+    def test_misspelled_source_with_allow_list(self):
+        out = ("Could not retrieve the list of available versions for provider\nhasicorp/google: provider "
+               "registry.terraform.io/hasicorp/google was not found\nin any of the search locations")
+        self.assertIn('Did you mean "hashicorp/google"?', runner._init_hint(out))
+
     def test_offline(self):
         self.assertIn("internet connection", runner._init_hint(OFFLINE))
 

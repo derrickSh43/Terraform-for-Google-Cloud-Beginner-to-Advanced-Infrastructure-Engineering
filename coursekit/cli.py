@@ -54,8 +54,8 @@ def cmd_setup(args: argparse.Namespace) -> int:
     try:
         from .app import vendor
         print("  " + vendor.install_monaco())
-    except Exception as exc:  # optional: the app falls back to a CDN or a plain editor
-        print(c(f"  Skipped ({exc}). The app will load the editor from a CDN, or use a plain one.", "33"))
+    except Exception as exc:  # optional: the app falls back to a plain editor
+        print(c(f"  Skipped ({exc}). The app uses a plain editor until setup succeeds.", "33"))
 
     paths.WORKSPACE.mkdir(exist_ok=True)
     print()

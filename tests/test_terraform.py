@@ -1,4 +1,5 @@
 import os
+import shutil
 import tempfile
 import unittest
 from pathlib import Path
@@ -112,6 +113,36 @@ class LinkProvidersTest(unittest.TestCase):
         (other / ".terraform.lock.hcl").write_text("")
         tf.link_providers(other)
         self.assertFalse((other / ".terraform").exists())
+
+
+class EnvTest(unittest.TestCase):
+    def test_inherited_settings_are_removed_whatever_their_case(self):
+        bad = {"TF_CLI_ARGS_PLAN": "-target=x", "tf_cli_args": "-x", "TF_CLI_CONFIG_FILE": "evil.rc", "TF_VAR_project_id": "real",
+               "GOOGLE_APPLICATION_CREDENTIALS": "key.json", "Google_Impersonate_Service_Account": "sa@x", "CLOUDSDK_CONFIG": "c"}
+        with mock.patch.dict(os.environ, {**bad, "PATH": os.environ.get("PATH", ""), "HTTPS_PROXY": "http://proxy:3128"}, clear=True):
+            e = tf.env()
+        for k in bad:
+            if k.upper() not in ("TF_CLI_CONFIG_FILE",):
+                self.assertNotIn(k, e)
+        self.assertEqual(e["TF_CLI_CONFIG_FILE"], str(tf.CLI_CONFIG))
+        self.assertEqual(e["GOOGLE_OAUTH_ACCESS_TOKEN"], tf.FAKE_TOKEN)
+        self.assertEqual(e["HTTPS_PROXY"], "http://proxy:3128")       # proxies still work for setup
+
+    def test_cli_config_allows_only_course_providers(self):
+        text = tf._cli_config().read_text(encoding="utf-8")
+        self.assertEqual(text.count('"registry.terraform.io/hashicorp/google", "registry.terraform.io/hashicorp/random"'), 2)
+        self.assertNotIn("external", text)
+
+    @unittest.skipUnless(shutil.which("terraform"), "needs terraform")
+    def test_other_providers_are_refused(self):
+        from coursekit import runner
+        build = paths.BUILD / "unit-provider"
+        build.mkdir(parents=True, exist_ok=True)
+        self.addCleanup(shutil.rmtree, build, True)
+        (build / "main.tf").write_text('data "external" "x" {\n  program = ["whoami"]\n}\n')
+        res = tf.run(["init", "-backend=false", "-no-color", "-input=false"], cwd=build)
+        self.assertFalse(res.ok)
+        self.assertIn('"hashicorp/external" is refused', runner._init_hint(res.output))
 
 
 if __name__ == "__main__":

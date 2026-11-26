@@ -152,11 +152,21 @@ On Windows `course.cmd check 01` works too, and on macOS/Linux `./course check 0
 
 ## Safety
 
-The checker **removes Google credentials** (`GOOGLE_APPLICATION_CREDENTIALS`,
-`GOOGLE_CREDENTIALS`, impersonation settings) from Terraform's environment and
-supplies a fake access token. It also forces a local backend. A course check
-cannot read, create or change anything in a real Google Cloud project, even on
-a machine that is logged in to gcloud.
+The checker **removes Google credentials** and every inherited `TF_*`, `GOOGLE_*`
+and `CLOUDSDK_*` setting from Terraform's environment, and supplies a fake access
+token. It also forces a local backend. A course check cannot read, create or
+change anything in a real Google Cloud project, even on a machine that is logged
+in to gcloud.
+
+Checks only install the `hashicorp/google` and `hashicorp/random` providers, so
+code can't pull in providers that run programs or call other services during a
+plan (`external`, `http`, ...). The app only answers requests addressed to
+`127.0.0.1` or `localhost` on its own port, and the editor is hash-checked when
+`setup` downloads it.
+
+Still, a check runs `terraform` on your machine: **only check code you trust**, such
+as your own work and the course's files. Terraform features such as `file()` can read
+any file your account can, so don't paste in configurations from unknown sources.
 
 ## Found a bug?
 

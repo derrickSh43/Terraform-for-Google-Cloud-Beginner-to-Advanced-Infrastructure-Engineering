@@ -485,6 +485,7 @@ function loadEditor() {
   return new Promise((resolve) => {
     const src = S.course.editor;
     const fallback = () => { if (!S.editor) { S.editor = plainEditor(); $("#editor-source").textContent = "editor: plain (run `python course.py setup` for the VS Code editor)"; } resolve(); };
+    if (!src.vs) { fallback(); return; }                     // no verified local copy: plain editor
     const timer = setTimeout(fallback, 8000);
     const s = document.createElement("script");
     s.src = `${src.vs}/loader.js`;
@@ -500,7 +501,7 @@ function loadEditor() {
         });
         S.editor.addCommand(S.monaco.KeyMod.CtrlCmd | S.monaco.KeyCode.KeyS, () => saveCurrent());
         S.editor.addCommand(S.monaco.KeyMod.CtrlCmd | S.monaco.KeyCode.Enter, () => runCheck());
-        $("#editor-source").textContent = src.source === "local" ? "editor: Monaco (VS Code)" : "editor: Monaco (VS Code, from CDN)";
+        $("#editor-source").textContent = "editor: Monaco (VS Code)";
         resolve();
       }, fallback);
     };

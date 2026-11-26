@@ -5,7 +5,7 @@
 
 Local only: it listens on 127.0.0.1, serves files from this repository, reads and writes only inside
 workspace/, and runs the same offline checks as `python course.py check`. Stdlib only. The editor is
-Monaco (the editor inside VS Code): from the local cache made by `python course.py setup`, else a CDN,
+Monaco (the editor inside VS Code): from the local cache made by `python course.py setup` (hash-pinned),
 else a plain text editor.
 """
 
@@ -272,7 +272,12 @@ class Handler(BaseHTTPRequestHandler):
         url = urlparse(self.path)
         q = {k: v[0] for k, v in parse_qs(url.query).items()}
         try:
-            if method == "POST" and self.headers.get("Origin") not in (None, f"http://{self.headers.get('Host')}"):
+            # Only this machine's own address, never a name another website controls (DNS rebinding).
+            port = self.server.server_address[1]
+            hosts = {f"127.0.0.1:{port}", f"localhost:{port}"}
+            if self.headers.get("Host") not in hosts:
+                raise ApiError(403, "unexpected host - open the app at the address printed when it started")
+            if method == "POST" and self.headers.get("Origin") not in (None, *(f"http://{h}" for h in hosts)):
                 raise ApiError(403, "cross-origin request refused")
             if url.path in ("/", "/index.html"):
                 return self._static(STATIC, "index.html")

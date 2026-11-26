@@ -101,6 +101,14 @@ def _plan_hint(output: str) -> str:
 
 def _init_hint(output: str) -> str:
     flat = " ".join(output.split())         # Terraform wraps long lines
+    m = re.search(r"provider (?:registry[.]terraform[.]io/)?([\w.-]+/[\w.-]+) was not found in any of the search locations", flat)
+    if m and m.group(1) not in ("hashicorp/google", "hashicorp/random"):
+        ns, name = m.group(1).split("/")
+        if name in ("google", "random"):    # a typo in the namespace, e.g. "hasicorp/google"
+            return (f'There is no provider called "{ns}/{name}" - check the spelling of `source` in required_providers\n'
+                    f'(usually versions.tf). Did you mean "hashicorp/{name}"?')
+        return (f'Course checks only install hashicorp/google and hashicorp/random, so "{m.group(1)}" is refused.\n'
+                "Other providers (external, http, local, ...) can run programs or reach the network during a plan.")
     m = re.search(r"does not have a provider named (?:registry\.terraform\.io/)?([\w.-]+)/([\w.-]+)", flat)
     if m:
         ns, name = m.groups()

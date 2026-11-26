@@ -149,6 +149,42 @@ class StartOverTest(unittest.TestCase):
             server.clean_builds()
 
 
+class HostCheckTest(unittest.TestCase):
+    """DNS rebinding: a page on another site that resolves to 127.0.0.1 sends its own Host header."""
+
+    def setUp(self):
+        import threading
+        self.httpd = server.ThreadingHTTPServer(("127.0.0.1", 0), server.Handler)
+        threading.Thread(target=self.httpd.serve_forever, daemon=True).start()
+        self.addCleanup(self.httpd.server_close)
+        self.addCleanup(self.httpd.shutdown)
+        self.port = self.httpd.server_address[1]
+
+    def request(self, method, host, origin=None):
+        import http.client
+        c = http.client.HTTPConnection("127.0.0.1", self.port, timeout=10)
+        headers = {"Host": host, "Content-Type": "application/json"}
+        if origin:
+            headers["Origin"] = origin
+        c.request(method, "/api/course" if method == "GET" else "/api/fmt", body=None if method == "GET" else b"{}", headers=headers)
+        status = c.getresponse().status
+        c.close()
+        return status
+
+    def test_own_address_is_served(self):
+        self.assertEqual(self.request("GET", f"127.0.0.1:{self.port}"), 200)
+        self.assertEqual(self.request("GET", f"localhost:{self.port}"), 200)
+
+    def test_other_hosts_are_refused(self):
+        evil = f"evil.example:{self.port}"
+        self.assertEqual(self.request("GET", evil), 403)
+        self.assertEqual(self.request("POST", evil, f"http://{evil}"), 403)
+        self.assertEqual(self.request("GET", "127.0.0.1:1"), 403)
+
+    def test_cross_origin_posts_are_refused(self):
+        self.assertEqual(self.request("POST", f"127.0.0.1:{self.port}", "http://evil.example"), 403)
+
+
 class ServerHelpersTest(unittest.TestCase):
     def test_safe_paths(self):
         with tempfile.TemporaryDirectory() as d:
