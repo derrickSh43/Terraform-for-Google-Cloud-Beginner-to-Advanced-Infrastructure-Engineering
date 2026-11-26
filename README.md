@@ -54,6 +54,26 @@ python course.py check-all --challenge    # every started lesson, one summary
 Prefer a container? Open the repo in VS Code and choose **Reopen in Container**.
 Terraform, Python and tflint are preinstalled. See [docs/SETUP.md](docs/SETUP.md).
 
+## Everyday use
+
+| I want to... | Do this |
+|---|---|
+| Start where I left off | `python course.py`. The app opens at your current lesson and task. |
+| Open a specific lesson | ☰ (top left) and pick it, or start the app with `python course.py 05` |
+| Save my files | **Save** or Ctrl+S. **▶ Check** saves everything first. |
+| Stop for the day | Save, then press Ctrl+C in the terminal running the app, and close the tab. Your files are in `workspace/`, and your progress is saved as tasks pass or you move between them. If you close the tab with unsaved changes, the browser asks first. |
+| Start a lesson over | Stop the app, then `python course.py start 03 --force`. This replaces `workspace/03-...` with a fresh starter, and **deletes your work in that lesson**. Copy the folder first if you want to keep it. |
+| Restore a troubleshooting exercise | **Restore the broken files** in the Troubleshoot step |
+| Skip a task or step | **Skip task**, or **Skip the lab** on the last task. Go back any time from the bar at the top. |
+| Carry my own code into the next lesson | On the new lesson's first page, **Start, continuing from my lesson 03 work** (or `python course.py start 04 --from-mine`) |
+| See every lesson and my progress | `python course.py list` |
+| Check without the app | `python course.py check 03` (add `--challenge`, or `-v` for the full plan) |
+| Look at the reference answer | `python course.py solution 03` |
+| Free disk space | Stop the app, then `python course.py clean`. This deletes only generated build folders. |
+
+The app runs one copy at a time on port 8024. If you start a second one, it picks another port, so
+close the old tab to avoid editing in two places.
+
 ## Getting updates
 
 The app looks for fixes when it starts. When there are some, **⬆ Update available** appears at the top
