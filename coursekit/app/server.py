@@ -98,6 +98,7 @@ def lesson_json(l: paths.Lesson) -> dict:
         "progress": prog.get("lessons", {}).get(l.id, {}),
         "readme": markdown.render(l.sub("README.md").read_text(encoding="utf-8")),
         "tasks": {s: [_task_json(t) for t in guide.tasks(l, s)] for s in steps if s != "broken"},
+        "diagrams": vendor.mermaid_url(),        # per lesson: it may finish downloading after the app starts
     }
     story, objectives = guide.intro_text(l)
     data["story"], data["objectives"] = story, markdown.render(objectives)
@@ -348,6 +349,16 @@ class Handler(BaseHTTPRequestHandler):
             self._json({"error": f"{type(exc).__name__}: {exc}"}, HTTPStatus.INTERNAL_SERVER_ERROR)
 
 
+def _fetch_mermaid() -> None:
+    """Courses set up before diagrams were drawn don't have Mermaid yet: fetch it once, quietly.
+    Offline is fine: the lesson pages show the diagram source instead."""
+    try:
+        vendor.install_mermaid()
+        print("Diagram renderer downloaded. Lesson diagrams draw from the next page you open.")
+    except Exception:
+        pass
+
+
 def serve(port: int = 8024, open_browser: bool = True, lesson: str | None = None) -> int:
     paths.WORKSPACE.mkdir(exist_ok=True)
     try:
@@ -360,6 +371,8 @@ def serve(port: int = 8024, open_browser: bool = True, lesson: str | None = None
     print("To quit: click 'Save & quit' in the app, or press Ctrl+C here.")
     if open_browser:
         threading.Timer(0.5, lambda: webbrowser.open(url)).start()
+    if not vendor.mermaid_url():
+        threading.Thread(target=_fetch_mermaid, daemon=True).start()
     try:
         httpd.serve_forever()
     except KeyboardInterrupt:

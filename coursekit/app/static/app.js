@@ -208,6 +208,64 @@ function render() {
   else c.innerHTML = doneView();
   c.scrollTop = 0; $("#left").scrollTop = 0;
   wireContent();
+  drawDiagrams(c);
+}
+
+// ------------------------------------------------------------------ diagrams
+// Mermaid is cached locally by setup (or fetched once in the background by the app). Without it,
+// diagrams stay as their source text.
+let mermaidReady = null;
+const diagramCache = new Map();          // source -> svg, so re-renders don't redraw
+
+function loadMermaid(url) {
+  if (!mermaidReady) {
+    mermaidReady = new Promise((ok, fail) => {
+      const s = document.createElement("script");
+      s.src = url; s.onload = ok; s.onerror = fail;
+      document.head.appendChild(s);
+    }).then(() => {
+      window.mermaid.initialize({ startOnLoad: false, securityLevel: "strict", theme: "dark",
+        fontFamily: getComputedStyle(document.documentElement).fontFamily });
+      return window.mermaid;
+    }).catch((e) => { mermaidReady = null; throw e; });
+  }
+  return mermaidReady;
+}
+
+async function drawDiagrams(root) {
+  const blocks = [...root.querySelectorAll("pre.mermaid-src")];
+  if (!blocks.length || !S.lesson || !S.lesson.diagrams) return;
+  let mermaid;
+  try { mermaid = await loadMermaid(S.lesson.diagrams); } catch { return; }
+  for (const pre of blocks) {
+    const src = pre.textContent;
+    let svg = diagramCache.get(src);
+    if (!svg) {
+      try { svg = (await mermaid.render(`dia-${diagramCache.size}-${Date.now()}`, src)).svg; }
+      catch { continue; }                // a diagram that doesn't parse keeps its source
+      diagramCache.set(src, svg);
+    }
+    if (!pre.isConnected) continue;      // the page changed while drawing
+    const fig = document.createElement("figure");
+    fig.className = "diagram";
+    fig.innerHTML = `<div class="dia" title="Click to enlarge">${svg}</div>` +
+      `<details><summary>Show the Mermaid source</summary></details>`;
+    pre.replaceWith(fig);
+    fig.querySelector("details").appendChild(pre);
+    fig.querySelector(".dia").onclick = () => enlargeDiagram(svg);
+  }
+}
+
+function enlargeDiagram(svg) {
+  const o = document.createElement("div");
+  o.className = "diagram-zoom";
+  o.innerHTML = `<div class="bar"><span class="muted">Diagram · scroll to pan</span><button data-close>Close ✕</button></div><div class="canvas">${svg}</div>`;
+  const close = () => { o.remove(); document.removeEventListener("keydown", onKey); };
+  const onKey = (e) => { if (e.key === "Escape") close(); };
+  o.querySelector("[data-close]").onclick = close;
+  o.onclick = (e) => { if (e.target === o) close(); };
+  document.addEventListener("keydown", onKey);
+  document.body.appendChild(o);
 }
 
 function learnView() {

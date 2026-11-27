@@ -31,7 +31,7 @@ Your files save automatically, and progress is saved as you go. To stop, click *
 
 | Left | Right |
 |---|---|
-| The lesson, then one task at a time: **Learn → Lab → Challenge → Troubleshoot → Done** | Your files in a VS Code-style editor (Monaco: Terraform highlighting, tabs, Ctrl+S, find/replace) |
+| The lesson, then one task at a time: **Learn → Lab → Challenge → Troubleshoot → Done**. Diagrams are drawn; click one to enlarge it | Your files in a VS Code-style editor (Monaco: Terraform highlighting, tabs, Ctrl+S, find/replace) |
 | Each task's instructions, which requirements it's checked by, and the result of the last check, with hints | **▶ Check** (Ctrl+Enter) runs `terraform fmt`, `init`, `validate` and an offline `plan`, then the requirement checks. **Format** runs `terraform fmt`. Results, pipeline, plan and test output appear under the editor |
 
 When a task passes, **Next task →** appears, and tasks that already pass are skipped. After the

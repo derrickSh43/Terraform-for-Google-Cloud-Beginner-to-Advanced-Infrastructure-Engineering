@@ -77,7 +77,7 @@ accept. A conditional *chooses* between values you do accept. Validate `environm
 flowchart LR
   U((Internet)) -->|"HTTP :80<br/>(firewall: lesson 5)"| VM
   subgraph project["GCP project"]
-    subgraph default["default VPC · us-central1-a"]
+    subgraph vpc["default VPC · us-central1-a"]
       VM["meridian-web-1<br/>e2-micro · Debian 12 · NGINX<br/>tag: web"]
     end
     SA["meridian-web<br/>service account"] -. runs as .- VM

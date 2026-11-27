@@ -56,6 +56,12 @@ def cmd_setup(args: argparse.Namespace) -> int:
         print("  " + vendor.install_monaco())
     except Exception as exc:  # optional: the app falls back to a plain editor
         print(c(f"  Skipped ({exc}). The app uses a plain editor until setup succeeds.", "33"))
+    print(c("Caching the diagram renderer for the lesson pages (Mermaid)", "1"))
+    try:
+        from .app import vendor
+        print("  " + vendor.install_mermaid())
+    except Exception as exc:  # optional: diagrams show as source text
+        print(c(f"  Skipped ({exc}). Diagrams show as source text until setup succeeds.", "33"))
 
     paths.WORKSPACE.mkdir(exist_ok=True)
     print()

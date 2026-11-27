@@ -239,6 +239,15 @@ class VendorTest(unittest.TestCase):
             self.assertEqual((dest / "min/vs/loader.js").read_bytes(), b"ok")
             self.assertFalse((Path(d) / "evil.js").exists())
 
+    def test_mermaid_takes_only_its_bundle_and_licence(self):
+        tgz = self._tgz({"package/dist/mermaid.min.js": b"js", "package/LICENSE": b"mit",
+                         "package/dist/mermaid.esm.mjs": b"no", "package/dist/chunks/x.mjs": b"no"})
+        with tempfile.TemporaryDirectory() as d:
+            dest = Path(d) / "mermaid"
+            self.assertEqual(vendor._extract(tgz, dest, lambda rel: rel in vendor.MERMAID_FILES), 2)
+            self.assertEqual(sorted(p.relative_to(dest).as_posix() for p in dest.rglob("*") if p.is_file()),
+                             ["LICENSE", "dist/mermaid.min.js"])
+
     def test_integrity(self):
         data = b"monaco"
         good = "sha512-" + base64.b64encode(hashlib.sha512(data).digest()).decode()
