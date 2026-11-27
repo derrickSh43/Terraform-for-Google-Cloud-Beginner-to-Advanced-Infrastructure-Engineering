@@ -107,6 +107,15 @@ class LessonTestTest(unittest.TestCase):
         self.assertIn("var.zz and your code accepted it", runner._test_hint(ACCEPTED))
         self.assertEqual(runner._test_hint("Error: something else"), "")
 
+    def test_missing_validation_block(self):
+        with tempfile.TemporaryDirectory() as d:
+            f = Path(d) / "variables.tf"
+            f.write_text('variable "zz" {\n  type = map(string)\n  default = { a = "b" }\n  # validation { }\n}\n'
+                         'variable "other" {\n  validation {\n    condition = true\n  }\n}\n')
+            self.assertIn('variable "zz" has no validation block yet', runner._test_hint(ACCEPTED, [Path(d)]))
+            f.write_text('variable "zz" {\n  validation {\n    condition = true\n    error_message = "x."\n  }\n}\n')
+            self.assertIn("Check the condition", runner._test_hint(ACCEPTED, [Path(d)]))
+
     def test_results_per_file(self):
         self.assertEqual(runner._test_results(UNDECLARED), {"machine_type.tftest.hcl": False})
         self.assertEqual(runner._test_results("tests/lesson_zones.tftest.hcl... pass\n\nSuccess! 1 passed, 0 failed.\n"),

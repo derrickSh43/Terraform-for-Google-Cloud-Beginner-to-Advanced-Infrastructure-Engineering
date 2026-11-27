@@ -48,6 +48,29 @@ only write logs and metrics.
 
 `path.module` is the folder containing the current `.tf` file. Always build paths from it.
 
+### Conditional expressions
+
+Terraform has no `if` statement. It has one conditional *expression*:
+
+```hcl
+condition ? value_if_true : value_if_false
+```
+
+```hcl
+provisioning_model = var.environment == "prod" ? "STANDARD" : "SPOT"
+```
+
+- Both results must be the same type (two strings, two numbers, two lists).
+- It picks a **value**. To make a whole resource optional, use it in `count`:
+  `count = var.enable_nat ? 1 : 0` (lesson 07). For an optional nested block, use it in
+  `dynamic`: `for_each = var.external_ip ? [1] : []` (lesson 06).
+- Keep it readable: when you find yourself nesting `? :` inside `? :`, use a map lookup
+  instead, such as `local.sizes[var.environment]`.
+
+**Validation vs. conditionals:** a `validation` block (lesson 02) *rejects* values you don't
+accept. A conditional *chooses* between values you do accept. Validate `environment` to be
+`dev` or `prod`, then branch on it.
+
 ## 2. Architecture
 
 ```mermaid

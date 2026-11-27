@@ -142,6 +142,13 @@ class StartOverTest(unittest.TestCase):
             self.assertNotIn("03", lessons)
             self.assertEqual(lessons["02"], {"lab": "passed"})
 
+    def test_read_only_tasks_are_remembered(self):
+        l = server._lesson("03")
+        server.set_progress(l, {"lab_read": 2})
+        server.set_progress(l, {"lab_read": 0})
+        r = server.set_progress(l, {"lab_read": 2, "challenge_read": True, "lab_read_x": 1})
+        self.assertEqual(r["progress"], {"lab_read": [0, 2]})
+
     def test_waits_for_a_running_check(self):
         with server._check_lock, self.assertRaises(server.ApiError):
             server.start_over(server._lesson("03"))

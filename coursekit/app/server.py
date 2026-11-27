@@ -225,6 +225,9 @@ def set_progress(l: paths.Lesson, body: dict) -> dict:
                 st[k] = v
         elif k in ("lab_task", "challenge_task") and isinstance(v, int):
             st[k] = v
+        elif k in ("lab_read", "challenge_read") and isinstance(v, int) and not isinstance(v, bool):
+            # Steps with nothing to check (reading, reflection questions): marked done once read.
+            st[k] = sorted(set(st.get(k, [])) | {v})
     prog["current"] = l.id
     guide.save_progress(prog)
     return {"progress": st}

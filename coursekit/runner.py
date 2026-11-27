@@ -152,8 +152,32 @@ def _test_hint(output: str, dirs: list[Path] | tuple[Path, ...] = ()) -> str:
     if m and m.group(1) in extra:
         return f'The test sets a variable named "{m.group(1)}", and your code doesn\'t declare it.'
     if m:
-        return f"The test passes a bad value to var.{m.group(1)} and your code accepted it. Check the condition in its validation block."
+        name = m.group(1)
+        if _variable_has_validation(dirs, name) is False:
+            return (f'The test passes a bad value to var.{name} and expects it to be rejected, but variable "{name}" '
+                    "has no validation block yet.\nAdd one whose condition is false for bad values.")
+        return f"The test passes a bad value to var.{name} and your code accepted it. Check the condition in its validation block."
     return ""
+
+
+def _variable_has_validation(dirs, name: str) -> bool | None:
+    """True/False if `variable "name"` is found in dirs' .tf files; None if it isn't found."""
+    for d in dirs:
+        for f in sorted(Path(d).glob("*.tf")):
+            try:
+                text = f.read_text(encoding="utf-8")
+            except OSError:
+                continue
+            m = re.search(rf'^\s*variable\s+"{re.escape(name)}"\s*\{{', text, re.M)
+            if not m:
+                continue
+            depth, i = 1, m.end()
+            while i < len(text) and depth:
+                depth += {"{": 1, "}": -1}.get(text[i], 0)
+                i += 1
+            body = re.sub(r"#.*|//.*", "", text[m.end():i])
+            return re.search(r"^\s*validation\s*\{", body, re.M) is not None
+    return None
 
 
 def _test_results(output: str) -> dict[str, bool]:

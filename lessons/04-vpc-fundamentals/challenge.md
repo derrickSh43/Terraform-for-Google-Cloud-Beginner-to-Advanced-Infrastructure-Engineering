@@ -12,7 +12,7 @@ python course.py check 04 --challenge
 | C4.1 | Replace `web_subnet_cidr` with `variable "subnets"` (`map(string)`, tier name → CIDR) defaulting to `web = 10.10.1.0/24` and `app = 10.10.2.0/24`. Create **all** subnets from one resource with `for_each`. The VM uses the `"web"` entry. |
 | C4.2 | No two subnets may overlap. |
 | C4.3 | Enable VPC flow logs on every subnet (sample 50%, include metadata). |
-| C4.4 | Validate `var.subnets`: every value must be a valid CIDR, and a `web` key is mandatory. `tests/challenge/subnets.tftest.hcl` must pass. |
+| C4.4 | Validate `var.subnets`: every value must be a valid CIDR, and a `web` key is mandatory. `tests/challenge/subnets.tftest.hcl` must pass. It plans three times: with your defaults (must work), with `app = "10.10.2.0/33"` and with no `web` key. The last two are bad **on purpose**, and `var.subnets` must reject them. See *Why does the test send a bad value on purpose?* in lesson 02's challenge. |
 
 ## Hints
 

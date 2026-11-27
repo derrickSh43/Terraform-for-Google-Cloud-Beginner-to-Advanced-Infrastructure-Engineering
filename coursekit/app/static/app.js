@@ -242,6 +242,22 @@ function outcomeHtml(o) {
     (o.passed ? "" : (o.message ? `<div class="msg">${esc(o.message)}</div>` : "") + (o.hint ? `<div class="hint">Hint: ${esc(o.hint)}</div>` : "")) + `</div>`;
 }
 
+// Read-only tasks (reading, reflection questions) are done once you press Continue on them.
+// Progress saved before this existed has no list: count the ones before where you are.
+function readSet(step) {
+  const r = prog()[`${step}_read`];
+  if (Array.isArray(r)) return new Set(r);
+  const at = prog()[`${step}_task`] || 0;
+  return new Set(S.lesson.tasks[step].map((_, k) => k).filter((k) => k < at));
+}
+
+function taskDone(step, t, k, passed) {
+  if (prog()[step] === "passed") return true;
+  if (t.final) return false;
+  if (!t.ids.length) return readSet(step).has(k);
+  return t.ids.every((id) => passed.has(id));
+}
+
 function taskView(step) {
   const tasks = S.lesson.tasks[step];
   const done = prog()[step];
@@ -269,7 +285,7 @@ function taskView(step) {
   let actions;
   if (done && t.final) actions = `<button class="primary" data-act="goto-current">Continue: ${STEP_LABEL[S.stage]} →</button>`;
   else if (finalOk) actions = `<button class="primary big" data-act="step-complete">${step === "lab" ? "On to the next part →" : "Continue →"}</button>`;
-  else if (info) actions = `<button class="primary" data-act="next-task">Continue →</button>`;
+  else if (info) actions = `<button class="primary" data-act="read-next">Continue →</button>`;
   else if (doneTask) actions = `<button class="primary big" data-act="next-task">Next task →</button>`;
   else actions = `<button class="primary big" data-act="check">${S.checking ? '<span class="spinner"></span>Checking…' : "▶ Check this task"}</button>`;
   actions += i > 0 ? `<button class="ghost" data-act="prev-task">◀ Back</button>` : "";
@@ -277,7 +293,7 @@ function taskView(step) {
   if (t.final && !finalOk && !done) actions += `<button class="ghost" data-act="skip-step">Skip the ${STEP_LABEL[step].toLowerCase()}</button>`;
 
   const list = tasks.map((x, k) => {
-    const ok = x.ids.length && x.ids.every((id) => passed.has(id));
+    const ok = taskDone(step, x, k, passed);
     return `<li class="${k === i ? "current" : ""} ${ok ? "passed" : ""}" data-task="${k}">${ok ? "✓" : k === i ? "●" : "○"} ${esc(x.title)}</li>`;
   }).join("");
   const shellNote = /terraform (init|plan|validate)|course\.py/.test(t.html)
@@ -327,6 +343,7 @@ function wireContent() {
   on("view-learn", () => viewStage("learn"));
   on("check", runCheck);
   on("next-task", () => moveTask(+1, true));
+  on("read-next", markReadAndNext);
   on("prev-task", () => moveTask(-1));
   on("skip-task", () => moveTask(+1));
   on("skip-step", skipStep);
@@ -369,6 +386,17 @@ async function moveTask(delta, autoSkipPassing = false) {
   i = Math.max(0, Math.min(i, tasks.length - 1));
   await saveProgress({ [`${step}_task`]: i });
   render();
+}
+
+async function markReadAndNext() {
+  const step = S.viewStage || S.stage;
+  const key = `${step}_read`;
+  if (!Array.isArray(prog()[key])) {
+    // First mark under the new scheme: keep the read-only tasks the old rule already counted.
+    for (const k of readSet(step)) await saveProgress({ [key]: k });
+  }
+  await saveProgress({ [key]: taskIndex(step) });
+  await moveTask(+1, true);
 }
 
 async function skipStep() {

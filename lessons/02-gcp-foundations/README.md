@@ -61,6 +61,37 @@ Terraform has three styles of project IAM resource, and the difference is critic
 | `google_project_iam_binding` | **Owns** all members of one role | Silently removes grants made elsewhere |
 | `google_project_iam_policy` | **Owns** the entire project policy | Can lock everyone out, including you |
 
+### Input validation
+
+A `validation` block inside a variable is a rule the value must pass before Terraform plans
+anything:
+
+```hcl
+variable "region" {
+  type    = string
+  default = "us-central1"
+
+  validation {
+    condition     = contains(["us-central1", "us-east1"], var.region)
+    error_message = "region must be us-central1 or us-east1, where Meridian runs."
+  }
+}
+```
+
+- `condition` must be `true` for a good value. When it's `false`, Terraform stops and prints
+  `error_message`.
+- For format checks, wrap the test in `can(...)`, as in `can(regex("^[a-z]+$", var.name))`.
+  `can` turns "this expression errors" into `false`, so a value that breaks `regex()` fails
+  validation instead of crashing.
+- A variable can have several `validation` blocks: one rule each, one clear message each.
+
+It's foolproofing for whoever sets the value later: a teammate editing tfvars, a CI job,
+another team calling your module. The mistake is caught at the variable, with your
+message, instead of deep inside a resource with a provider error.
+
+> **Takeaway:** validate inputs other people set, especially module variables. Values that
+> never leave your own code don't need it.
+
 ## 2. Architecture
 
 ```mermaid

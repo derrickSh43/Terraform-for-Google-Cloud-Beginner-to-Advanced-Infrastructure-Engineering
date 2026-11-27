@@ -37,3 +37,25 @@ run "malformed_billing_account_is_rejected" {
 `expect_failures` *passes* when your validation correctly rejects the bad value.
 If your rule is missing, the `tests` stage fails. Lesson 16 has you write your
 own tests.
+
+### Why does the test send a bad value on purpose?
+
+The test isn't checking that *your* values are good. It's checking that your
+**guard** works, and the only way to prove a guard works is to send it something
+it should stop. Think of a bouncer: sending only adults through proves nothing,
+because a bouncer who lets everyone in passes that test too.
+
+The `variables { ... }` block in a `run` replaces your defaults, exactly like a
+caller passing `-var`, a `.tfvars` file or a module argument. So the test plays
+the careless caller: a typo, a value copied from the wrong place.
+
+"My code would never produce a bad value" is usually true, and beside the point.
+Your code doesn't produce the value. A variable is an **input**, and whoever sets
+it (prod's tfvars, another team calling your module, a CI job) controls it, not
+you. Without validation, a bad value still fails, but later and further away: deep
+in a resource, with the provider's error, pointing at a line the caller never
+wrote. With validation, it fails first, at the variable, with your message.
+
+Validation earns its keep on inputs other people set, especially module
+variables. You don't need it on values that never leave your own code (locals,
+hard-coded settings).
