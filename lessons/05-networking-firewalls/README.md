@@ -98,7 +98,7 @@ flowchart LR
 
 - [lab.md](lab.md): R5.1 – R5.10
 - [challenge.md](challenge.md): C5.1 – C5.4 (service-account rules, egress lockdown, logging)
-- [broken/](broken/): "the web server times out talking to the API"
+- [broken/](broken/): "the web VM times out talking to the app VM"
 
 ## 4. Phase 1 complete
 

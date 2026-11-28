@@ -417,8 +417,26 @@ function wireContent() {
   document.querySelectorAll("#content a[data-md-link]").forEach((a) => {
     const href = a.getAttribute("href");
     if (/^https?:/.test(href)) { a.target = "_blank"; a.rel = "noopener"; }
-    else a.onclick = (e) => { e.preventDefault(); toast(`See ${href} in the lesson folder`); };
+    else a.onclick = (e) => { e.preventDefault(); followLessonLink(href); };
   });
+}
+
+// Links between a lesson's own files open that part of the app; anything else is a file to look at.
+async function followLessonLink(href) {
+  const [file, hash] = href.split("#");
+  const steps = S.lesson.steps;
+  const stage = { "README.md": "learn", "lab.md": "lab", "challenge.md": "challenge", "broken/": "broken" }[file];
+  if (stage && (stage === "learn" || steps.includes(stage))) {
+    await viewStage(stage);
+    const h = hash && document.querySelector(`#content [data-anchor="${CSS.escape(decodeURIComponent(hash))}"]`);
+    if (h) {
+      h.scrollIntoView({ block: "start" });
+      setTimeout(() => h.isConnected && h.scrollIntoView({ block: "start" }), 600);   // diagrams above may have drawn
+    }
+    return;
+  }
+  if (file === "ANSWER.md" || file === "broken/ANSWER.md") return toast("The answer is under “Show the answer” on the Troubleshoot step.");
+  toast(`See ${href} in the lesson folder (lessons/${S.lesson.dirname}).`);
 }
 
 // ------------------------------------------------------------------ flow actions

@@ -68,11 +68,25 @@ def _list(lines: list[str]) -> str:
     return "".join(out)
 
 
+def slug(title: str) -> str:
+    """GitHub's heading anchor: lower case, punctuation dropped, spaces to hyphens."""
+    text = re.sub(r"`|\*\*|\*|_(?=\w)|(?<=\w)_", "", title)
+    text = re.sub(r"\[([^\]]+)\]\([^)]*\)", r"\1", text)      # link text only
+    return re.sub(r"[^\w\- ]", "", text.strip().lower()).replace(" ", "-")
+
+
 def render(md: str) -> str:
     lines = md.splitlines()
     out: list[str] = []
     i = 0
     para: list[str] = []
+    anchors: dict[str, int] = {}
+
+    def anchor(title: str) -> str:
+        s = slug(title)
+        n = anchors.get(s, 0)
+        anchors[s] = n + 1
+        return s if n == 0 else f"{s}-{n}"           # repeated headings get -1, -2 like GitHub
 
     def flush():
         if para:
@@ -104,7 +118,7 @@ def render(md: str) -> str:
         if h:
             flush()
             n = len(h.group(1))
-            out.append(f"<h{n}>{inline(h.group(2))}</h{n}>")
+            out.append(f'<h{n} data-anchor="{html.escape(anchor(h.group(2)))}">{inline(h.group(2))}</h{n}>')
             i += 1
             continue
         if re.match(r"^\s*(-{3,}|\*{3,})\s*$", line):

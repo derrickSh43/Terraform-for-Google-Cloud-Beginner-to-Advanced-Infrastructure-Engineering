@@ -1,6 +1,7 @@
 import base64
 import hashlib
 import io
+import re
 import shutil
 import subprocess
 import tarfile
@@ -16,7 +17,7 @@ from coursekit.app import markdown, server, update, vendor
 class MarkdownTest(unittest.TestCase):
     def test_blocks(self):
         h = markdown.render("# Title\n\nSome **bold** and `code`.\n\n```hcl\nx = \"<y>\"\n```\n\n> quote\n")
-        self.assertIn("<h1>Title</h1>", h)
+        self.assertIn('<h1 data-anchor="title">Title</h1>', h)
         self.assertIn("<strong>bold</strong>", h)
         self.assertIn("<code>code</code>", h)
         self.assertIn('<code class="lang-hcl">x = &quot;&lt;y&gt;&quot;</code>', h)
@@ -31,6 +32,22 @@ class MarkdownTest(unittest.TestCase):
         self.assertIn("<th>A</th>", h)
         self.assertIn("&lt;script&gt;", h)
         self.assertNotIn("<script>", h)
+
+    def test_heading_anchors_match_github(self):
+        h = markdown.render("## 2. Architecture and connectivity matrix\n\n### `file()` vs **x**\n\n## Notes\n\n## Notes\n")
+        self.assertIn('data-anchor="2-architecture-and-connectivity-matrix"', h)
+        self.assertIn('data-anchor="file-vs-x"', h)
+        self.assertIn('data-anchor="notes"', h)
+        self.assertIn('data-anchor="notes-1"', h)
+
+    def test_readme_links_point_at_real_headings(self):
+        for l in paths.load_lessons():
+            for name in ("README.md", "lab.md", "challenge.md"):
+                if not l.sub(name).exists():
+                    continue
+                for anchor in re.findall(r"\]\(README\.md#([^)\s]+)\)", l.sub(name).read_text(encoding="utf-8")):
+                    readme = markdown.render(l.sub("README.md").read_text(encoding="utf-8"))
+                    self.assertIn(f'data-anchor="{anchor}"', readme, f"{l.id} {name} links to a missing heading")
 
     def test_every_lesson_renders(self):
         for l in paths.load_lessons():
@@ -214,7 +231,7 @@ class ServerHelpersTest(unittest.TestCase):
         data = server.lesson_json(server._lesson("24"))
         self.assertEqual(data["steps"], ["lab", "challenge", "broken"])
         self.assertTrue(data["tasks"]["lab"][-1]["final"])
-        self.assertIn("<h1>", data["readme"])
+        self.assertIn("<h1 data-anchor=", data["readme"])
         self.assertEqual(len(server.course_json()["lessons"]), 24)
         with self.assertRaises(server.ApiError):
             server._lesson("99")

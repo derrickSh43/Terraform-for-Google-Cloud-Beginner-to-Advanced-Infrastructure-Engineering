@@ -90,7 +90,7 @@ def lesson_json(l: paths.Lesson) -> dict:
     prev = paths.previous_lesson(l)
     steps = guide.steps_for(l)
     data = {
-        "id": l.id, "title": l.title, "phase": l.phase, "status": l.status,
+        "id": l.id, "title": l.title, "phase": l.phase, "status": l.status, "dirname": l.dirname,
         "started": l.workspace.exists(),
         "prev": prev.id if prev else None,
         "prev_started": bool(prev and prev.workspace.exists()),
